@@ -33,27 +33,27 @@ namespace SilkUI
             if (mouse != null)
             {
                 mouse.MouseMove += (mouse, point) =>
-                    RunHandlers((c, args) => c.OnMouseMove(args),
+                    RunMouseHandlers((c, args) => c.OnMouseMove(args),
                         new MouseMoveEventArgs(point.X, point.Y, _currentMouseButtons)
                     );
                 mouse.MouseDown += (mouse, button) =>
                 {
                     _lastMouseDownPositions[button] = mouse.Position;
-                    RunHandlers((c, args) => c.OnMouseDown(args),
+                    RunMouseHandlers((c, args) => c.OnMouseDown(args),
                         new MouseButtonEventArgs(mouse.Position.X, mouse.Position.Y, button, _currentModifiers)
                     );
                 };
                 mouse.MouseUp += (mouse, button) =>
-                    RunHandlers((c, args) => c.OnMouseUp(args),
+                    RunMouseHandlers((c, args) => c.OnMouseUp(args),
                         new MouseButtonEventArgs(mouse.Position.X, mouse.Position.Y, button, _currentModifiers)
                     );
                 mouse.Click += (mouse, button) =>
-                    RunHandlers((c, args) => c.OnMouseClick(args),
+                    RunMouseHandlers((c, args) => c.OnMouseClick(args),
                         new MouseButtonEventArgs(_lastMouseDownPositions[button].X,
                         _lastMouseDownPositions[button].Y, button, _currentModifiers)
                     );
                 mouse.DoubleClick += (mouse, button) =>
-                    RunHandlers((c, args) => c.OnMouseDoubleClick(args),
+                    RunMouseHandlers((c, args) => c.OnMouseDoubleClick(args),
                         new MouseButtonEventArgs(_lastMouseDownPositions[button].X,
                         _lastMouseDownPositions[button].Y, button, _currentModifiers)
                     );
@@ -80,6 +80,30 @@ namespace SilkUI
                     _currentModifiers = (KeyModifiers)(modifiers & 0x07);
                     RunHandlers((c, args) => c.OnKeyUp(args), new KeyEventArgs(key, _currentModifiers));
                 };
+            }
+        }
+
+        private void RunMouseHandlers<T>(Action<Control, T> handler, T args) where T : MouseEventArgs
+        {
+            // In general later created controls will be
+            // registered later so childs come later in
+            // the list of register controls.
+            // As childs should process input events first
+            // we reverse the collection order here.
+            for (int i = _registeredControls.Count - 1; i >= 0; --i)
+            {
+                if (args.CancelPropagation)
+                    return;
+
+                var absoluteRect = _registeredControls[i].AbsoluteRectangle;
+
+                if (absoluteRect.Contains(args.X, args.Y))
+                {
+                    handler(_registeredControls[i], (T)args.CloneWithOffset
+                    (
+                        -absoluteRect.X, -absoluteRect.Y
+                    ));
+                }
             }
         }
 

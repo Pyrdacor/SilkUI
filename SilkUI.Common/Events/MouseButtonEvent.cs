@@ -2,10 +2,8 @@ using Silk.NET.Input.Common;
 
 namespace SilkUI
 {
-    public class MouseButtonEventArgs : PropagatedEventArgs
+    public class MouseButtonEventArgs : MouseEventArgs
     {
-        public int X { get; }
-        public int Y { get; }
         public MouseButton Button { get; }
         public KeyModifiers KeyModifiers { get; }
         public float PreciseX { get; }
@@ -13,13 +11,17 @@ namespace SilkUI
 
         internal MouseButtonEventArgs(float x, float y, MouseButton button,
             KeyModifiers modifiers = KeyModifiers.None)
+            : base(Util.Round(x), Util.Round(y))
         {
-            X = Util.Round(x);
-            Y = Util.Round(y);
             Button = button;
             KeyModifiers = modifiers;
             PreciseX = x;
             PreciseY = y;
+        }
+
+        internal override MouseEventArgs CloneWithOffset(int x, int y)
+        {
+            return new MouseButtonEventArgs(PreciseX + x, PreciseY + y, Button, KeyModifiers);
         }
     }
 

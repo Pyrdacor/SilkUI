@@ -1,20 +1,22 @@
 namespace SilkUI
 {
-    public class MouseMoveEventArgs : PropagatedEventArgs
+    public class MouseMoveEventArgs : MouseEventArgs
     {
-        public int X { get; }
-        public int Y { get; }
         public MouseButtons Buttons { get; }
         public float PreciseX { get; }
         public float PreciseY { get; }
 
         internal MouseMoveEventArgs(float x, float y, MouseButtons buttons)
+            : base(x, y)
         {
-            X = Util.Round(x);
-            Y = Util.Round(y);
             Buttons = buttons;
             PreciseX = x;
             PreciseY = y;
+        }
+
+        internal override MouseEventArgs CloneWithOffset(int x, int y)
+        {
+            return new MouseMoveEventArgs(PreciseX + x, PreciseY + y, Buttons);
         }
     }
 
