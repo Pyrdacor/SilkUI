@@ -4,13 +4,14 @@ using Silk.NET.OpenGL;
 
 namespace SilkUI.Renderer.OpenGL
 {
+    using Shaders;
+
     public delegate Point PositionTransformation(Point position);
 
     internal class RenderLayer : IDisposable
     {
         private bool _disposed = false;
         private Texture _texture = null;
-        private bool _blur = false;
         private readonly PrimitiveRenderer _primitiveRenderer = null;
         private readonly RenderDimensionReference _renderDimensionReference = null;
 
@@ -44,18 +45,19 @@ namespace SilkUI.Renderer.OpenGL
             set;
         } = 0.0f;
 
-        public RenderLayer(Texture texture, int numVerticesPerNode, bool supportBlur,
+        public bool SupportZoom => false; // TODO
+
+        public bool SupportTransparency => _primitiveRenderer.SupportTransparency;
+
+        public RenderLayer(Texture texture, PrimitiveRenderer primitiveRenderer,
             RenderDimensionReference renderDimensionReference, Color? colorKey = null, Color? colorOverlay = null)
         {
             _renderDimensionReference = renderDimensionReference;
-            _primitiveRenderer = new PrimitiveRenderer(texture != null, numVerticesPerNode, supportBlur);
+            _primitiveRenderer = primitiveRenderer;
             _texture = texture;
-            _blur = supportBlur;
             ColorKey = colorKey;
             ColorOverlay = colorOverlay;
         }
-
-        public bool SupportZoom => false; // TODO
 
         public void Render()
         {
@@ -64,15 +66,13 @@ namespace SilkUI.Renderer.OpenGL
 
             if (_texture != null)
             {
-                var textureShader = TextureShader.Instance;
+                var textureShader = _primitiveRenderer.Shader as TextureAtlasShader; // TODO: later support TextureShader as well?
 
-                textureShader.UpdateMatrices(SupportZoom);
                 textureShader.SetSampler(0); // we use texture unit 0 -> see Gl.ActiveTexture below
                 State.Gl.ActiveTexture(GLEnum.Texture0);
                 _texture.Bind();
 
                 textureShader.SetAtlasSize((uint)_texture.Width, (uint)_texture.Height);
-                textureShader.SetZ(Z);
 
                 if (ColorKey == null)
                     textureShader.SetColorKey(1.0f, 0.0f, 1.0f);
@@ -83,22 +83,16 @@ namespace SilkUI.Renderer.OpenGL
                     textureShader.SetColorOverlay(1.0f, 1.0f, 1.0f, 1.0f);
                 else
                     textureShader.SetColorOverlay(ColorOverlay.Value.R / 255.0f, ColorOverlay.Value.G / 255.0f, ColorOverlay.Value.B / 255.0f, ColorOverlay.Value.A / 255.0f);
-
-                // TODO: blur
             }
-            else
+            else if (_primitiveRenderer.Shader is IShaderWithScreenHeight)
             {
-                ColorShader colorShader = _blur ? BlurColorShader.Instance : ColorShader.Instance;
-
-                colorShader.UpdateMatrices(SupportZoom);
-                colorShader.SetZ(Z);
-
-                if (_blur)
-                {
-                    (colorShader as BlurColorShader).SetScreenHeight((uint)_renderDimensionReference.Height);
-                }
+                (_primitiveRenderer.Shader as IShaderWithScreenHeight).SetScreenHeight((uint)_renderDimensionReference.Height);
             }
-            
+
+            _primitiveRenderer.Shader.UpdateMatrices(SupportZoom);
+            _primitiveRenderer.Shader.SetZ(Z);
+
+
             _primitiveRenderer.Render();
         }
 
@@ -107,7 +101,7 @@ namespace SilkUI.Renderer.OpenGL
             return _primitiveRenderer.GetDrawIndex(renderNode, PositionTransformation);
         }
 
-        public int GetDrawIndex(Shape shape)
+        public int GetDrawIndex(Polygon shape)
         {
             return _primitiveRenderer.GetDrawIndex(shape, PositionTransformation);
         }

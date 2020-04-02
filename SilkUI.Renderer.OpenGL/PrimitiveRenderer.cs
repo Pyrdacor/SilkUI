@@ -4,15 +4,18 @@ using Silk.NET.OpenGL;
 
 namespace SilkUI.Renderer.OpenGL
 {
+    using Shaders;
+
     internal class PrimitiveRenderer : IDisposable
     {
         private bool _disposed = false;
         private bool _supportTextures = false;
         private int _numVerticesPerNode = 0;
         private bool _supportBlur = false;
+        private bool _ellipse = false;
         private readonly VertexArrayObject _vertexArrayObject = null;
         private readonly PositionBuffer _positionBuffer = null;
-        private readonly PositionBuffer _offsetBuffer = null;
+        private readonly PositionBuffer _originBuffer = null;
         private readonly PositionBuffer _sizeBuffer = null;
         private readonly PositionBuffer _textureAtlasOffsetBuffer = null;
         private readonly ColorBuffer _colorBuffer = null;
@@ -22,60 +25,85 @@ namespace SilkUI.Renderer.OpenGL
         private readonly IndexBuffer _indexBuffer = null;
         private const uint PrimitiveRestartIndex = uint.MaxValue;
 
-        public PrimitiveRenderer(bool supportTextures, int numVerticesPerNode, bool supportBlur)
+        public static PrimitiveRenderer CreatePolygonRenderer(int numVerticesPerNode, bool transparent)
+        {
+            return new PrimitiveRenderer(false, numVerticesPerNode, false, false, transparent, PolygonShader.Instance);
+        }
+
+        public static PrimitiveRenderer CreateBlurRectRenderer()
+        {
+            return new PrimitiveRenderer(false, 4, true, false, true, BlurRectShader.Instance);
+        }
+
+        public static PrimitiveRenderer CreateBlurEllipseRenderer()
+        {
+            return new PrimitiveRenderer(false, 4, true, true, true, BlurEllipseShader.Instance);
+        }
+
+        public static PrimitiveRenderer CreateEllipseRenderer(bool transparent)
+        {
+            return new PrimitiveRenderer(false, 4, false, true, transparent, EllipseShader.Instance);
+        }
+
+        public static PrimitiveRenderer CreateSpriteRenderer()
+        {
+            // TODO: support non-atlas textures later?
+            return new PrimitiveRenderer(true, 4, false, false, true, TextureAtlasShader.Instance);
+        }
+
+        private PrimitiveRenderer(bool supportTextures, int numVerticesPerNode, bool supportBlur,
+            bool ellipse, bool supportTransparency, ShaderBase shader)
         {
             _supportTextures = supportTextures;
             _numVerticesPerNode = numVerticesPerNode;
             _supportBlur = supportBlur;
+            _ellipse = ellipse;
+            SupportTransparency = supportTransparency;
+            _vertexArrayObject = new VertexArrayObject(shader);
 
             if (supportTextures)
             {
-                _vertexArrayObject = new VertexArrayObject(TextureShader.Instance.ShaderProgram);
-
                 _textureAtlasOffsetBuffer = new PositionBuffer(false);
-                _vertexArrayObject.AddBuffer(TextureShader.DefaultTexCoordName, _textureAtlasOffsetBuffer);
-
-                if (supportBlur)
-                {
-                    // TODO: add blur texture buffer
-                }
+                _vertexArrayObject.AddBuffer(ShaderBase.TexCoordName, _textureAtlasOffsetBuffer);
             }
             else
             {
-                _vertexArrayObject = new VertexArrayObject
-                (
-                    supportBlur
-                        ? BlurColorShader.Instance.ShaderProgram
-                        : ColorShader.Instance.ShaderProgram
-                );
-
                 _colorBuffer = new ColorBuffer(true);
-                _vertexArrayObject.AddBuffer(ColorShader.DefaultColorName, _colorBuffer);
+                _vertexArrayObject.AddBuffer(ShaderBase.ColorName, _colorBuffer);
+
+                if (ellipse || supportBlur)
+                {
+                    _originBuffer = new PositionBuffer(true);
+                    _vertexArrayObject.AddBuffer(ShaderBase.OriginName, _originBuffer);
+
+                    _sizeBuffer = new PositionBuffer(true);
+                    _vertexArrayObject.AddBuffer(ShaderBase.SizeName, _sizeBuffer);
+                }
 
                 if (supportBlur)
                 {
-                    _offsetBuffer = new PositionBuffer(true);
-                    _vertexArrayObject.AddBuffer(BlurColorShader.DefaultOffsetName, _offsetBuffer);
-
-                    _sizeBuffer = new PositionBuffer(true);
-                    _vertexArrayObject.AddBuffer(BlurColorShader.DefaultSizeName, _sizeBuffer);
-
                     _blurRadiusBuffer = new ValueBuffer(true);
-                    _vertexArrayObject.AddBuffer(BlurColorShader.DefaultBlurRadiusName, _blurRadiusBuffer);
+                    _vertexArrayObject.AddBuffer(ShaderBase.BlurRadiusName, _blurRadiusBuffer);
+                }
 
+                if (ellipse)
+                {
                     _roundnessBuffer = new ValueBuffer(true);
-                    _vertexArrayObject.AddBuffer(BlurColorShader.DefaultRoundnessName, _roundnessBuffer);
+                    _vertexArrayObject.AddBuffer(ShaderBase.RoundnessName, _roundnessBuffer);
                 }
             }
 
-            _indexBuffer = new IndexBuffer(_numVerticesPerNode + 1);
+            _indexBuffer = new IndexBuffer(_numVerticesPerNode + 1, supportTransparency);
             _positionBuffer = new PositionBuffer(false);
             _layerBuffer = new ValueBuffer(true);
 
             _vertexArrayObject.AddBuffer("index", _indexBuffer);
-            _vertexArrayObject.AddBuffer(ColorShader.DefaultPositionName, _positionBuffer);            
-            _vertexArrayObject.AddBuffer(ColorShader.DefaultLayerName, _layerBuffer);
+            _vertexArrayObject.AddBuffer(ShaderBase.PositionName, _positionBuffer);            
+            _vertexArrayObject.AddBuffer(ShaderBase.LayerName, _layerBuffer);
         }
+
+        public ShaderBase Shader => _vertexArrayObject?.Shader;
+        public bool SupportTransparency { get; } = false;
 
         // TODO: do we really need all these IndexOutOfRangeException?
         public int GetDrawIndex(RenderNode renderNode,
@@ -114,36 +142,51 @@ namespace SilkUI.Renderer.OpenGL
                     throw new IndexOutOfRangeException("Invalid color buffer index");
             }
 
-            int offsetBufferIndex = -1;
+            int originBufferIndex = -1;
             int sizeBufferIndex = -1;
             int blurRadiusBufferIndex = -1;
             int roundnessBufferIndex = -1;
-            uint blurRadius = (renderNode is Shadow) ? (renderNode as Shadow).BlurRadius : 0u;
-            uint roundness = (renderNode is Shadow) ? (renderNode as Shadow).Roundness : 0u;
+            uint blurRadius =  0u;
+            uint roundness = 0u;
+            short originX = 0;
+            short originY = 0;
 
             if (_supportBlur)
             {
-                offsetBufferIndex = _offsetBuffer.Add(Util.LimitToShort(renderNode.X),
-                    Util.LimitToShort(renderNode.Y));
+                if (renderNode is Polygon)
+                    blurRadius = (renderNode as Polygon).BlurRadius ?? 0u;
 
-                if (offsetBufferIndex != index)
-                    throw new IndexOutOfRangeException("Invalid offset buffer index");
+                blurRadiusBufferIndex = _blurRadiusBuffer.Add(blurRadius);
+
+                if (blurRadiusBufferIndex != index)
+                    throw new IndexOutOfRangeException("Invalid blur radius buffer index");
+            }
+
+            if (_ellipse)
+            {
+                if (renderNode is Ellipse)
+                    roundness = (uint)(renderNode as Ellipse).Roundness;
+
+                roundnessBufferIndex = _roundnessBuffer.Add(roundness);
+
+                if (roundnessBufferIndex != index)
+                    throw new IndexOutOfRangeException("Invalid roundness buffer index");
+            }
+
+            if (_ellipse || _supportBlur)
+            {
+                originX = Util.LimitToShort(renderNode.X + renderNode.Width / 2);
+                originY = Util.LimitToShort(renderNode.Y + renderNode.Height / 2);
+                originBufferIndex = _originBuffer.Add(originX, originY);
+
+                if (originBufferIndex != index)
+                    throw new IndexOutOfRangeException("Invalid origin buffer index");
 
                 sizeBufferIndex = _sizeBuffer.Add(Util.LimitToShort(renderNode.Width),
                     Util.LimitToShort(renderNode.Height));
 
                 if (sizeBufferIndex != index)
                     throw new IndexOutOfRangeException("Invalid size buffer index");
-
-                blurRadiusBufferIndex = _blurRadiusBuffer.Add(blurRadius);
-
-                if (blurRadiusBufferIndex != index)
-                    throw new IndexOutOfRangeException("Invalid blur radius buffer index");
-
-                roundnessBufferIndex = _roundnessBuffer.Add(roundness);
-
-                if (roundnessBufferIndex != index)
-                    throw new IndexOutOfRangeException("Invalid roundness buffer index");
             }
 
             var layer = renderNode.DisplayLayer;
@@ -160,18 +203,20 @@ namespace SilkUI.Renderer.OpenGL
                     position = positionTransformation(position);
 
                 _positionBuffer.Add(Util.LimitToShort(position.X), Util.LimitToShort(position.Y), index + i);
+                _layerBuffer.Add(layer, layerBufferIndex + i);
                 if (!_supportTextures)
                     _colorBuffer.Add(renderNode.Color, colorBufferIndex + i);
                 if (_supportBlur)
+                    _blurRadiusBuffer.Add(blurRadius, blurRadiusBufferIndex + i);
+                if (_ellipse)
+                    _roundnessBuffer.Add(roundness, roundnessBufferIndex + i);
+                if (_ellipse || _supportBlur)
                 {
-                    _offsetBuffer.Add(Util.LimitToShort(renderNode.X), Util.LimitToShort(renderNode.Y),
-                        offsetBufferIndex + i);
+                    _originBuffer.Add(originX, originY,
+                        originBufferIndex + i);
                     _sizeBuffer.Add(Util.LimitToShort(renderNode.Width), Util.LimitToShort(renderNode.Height),
                         sizeBufferIndex + i);
-                    _blurRadiusBuffer.Add(blurRadius, blurRadiusBufferIndex + i);
-                    _roundnessBuffer.Add(roundness, roundnessBufferIndex + i);
                 }
-                _layerBuffer.Add(layer, layerBufferIndex + i);
             }
 
             int primitiveIndex = index / _numVerticesPerNode;
@@ -200,7 +245,7 @@ namespace SilkUI.Renderer.OpenGL
 
                 if (_supportBlur)
                 {
-                    _offsetBuffer.Update(index + i,
+                    _originBuffer.Update(index + i,
                         Util.LimitToShort(renderNode.X),
                         Util.LimitToShort(renderNode.Y)
                     );
@@ -302,10 +347,10 @@ namespace SilkUI.Renderer.OpenGL
                     _roundnessBuffer.Remove(index + i);
             }
 
-            if (_offsetBuffer != null)
+            if (_originBuffer != null)
             {
                 for (int i = 0; i < _numVerticesPerNode; ++i)
-                    _offsetBuffer.Remove(index + i);
+                    _originBuffer.Remove(index + i);
             }
 
             if (_sizeBuffer != null)
@@ -365,7 +410,7 @@ namespace SilkUI.Renderer.OpenGL
                     _layerBuffer?.Dispose();
                     _blurRadiusBuffer?.Dispose();
                     _roundnessBuffer?.Dispose();
-                    _offsetBuffer.Dispose();
+                    _originBuffer.Dispose();
                     _sizeBuffer?.Dispose();
                     _indexBuffer?.Dispose();
 

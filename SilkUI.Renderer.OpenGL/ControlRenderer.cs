@@ -5,11 +5,17 @@ using Silk.NET.Windowing.Common;
 
 namespace SilkUI.Renderer.OpenGL
 {
+    using Shaders;
+
     internal class ControlRenderer : IControlRenderer
     {
-        internal RenderLayer SpriteRenderLayer { get; }
-        internal RenderLayer ShadowRenderLayer { get; }
-        private readonly Dictionary<int, RenderLayer> _shapeRenderLayers = new Dictionary<int, RenderLayer>();
+        internal RenderLayer SpriteRenderLayer { get; } // for now this is based on an atlas texture
+        internal RenderLayer BlurRectRenderLayer { get; }
+        internal RenderLayer BlurEllipseRenderLayer { get; }
+        internal RenderLayer OpaqueEllipseRenderLayer { get; }
+        internal RenderLayer TransparentEllipseRenderLayer { get; }
+        private readonly Dictionary<int, RenderLayer> _opaquePolygonRenderLayers = new Dictionary<int, RenderLayer>();
+        private readonly Dictionary<int, RenderLayer> _transparentPolygonRenderLayers = new Dictionary<int, RenderLayer>();
         private readonly Dictionary<int, IRenderNode> _renderNodes = new Dictionary<int, IRenderNode>();
         private readonly IndexPool _renderNodeIndexPool = new IndexPool();
         private readonly Context _context;
@@ -22,38 +28,64 @@ namespace SilkUI.Renderer.OpenGL
             _renderDimensionReference = renderDimensionReference;
             _context = new Context(renderDimensionReference);
 
-            SpriteRenderLayer = new RenderLayer(_textureAtlas.AtlasTexture, 4, false, renderDimensionReference);
-            ShadowRenderLayer = new RenderLayer(null, 4, true, renderDimensionReference);
+            SpriteRenderLayer = new RenderLayer(_textureAtlas.AtlasTexture, PrimitiveRenderer.CreateSpriteRenderer(), renderDimensionReference); // TODO: colorkey? color overlay?
+            BlurRectRenderLayer = new RenderLayer(null, PrimitiveRenderer.CreateBlurRectRenderer(), renderDimensionReference);
+            BlurEllipseRenderLayer = new RenderLayer(null, PrimitiveRenderer.CreateBlurEllipseRenderer(), renderDimensionReference);
+            OpaqueEllipseRenderLayer = new RenderLayer(null, PrimitiveRenderer.CreateEllipseRenderer(false), renderDimensionReference);
+            TransparentEllipseRenderLayer = new RenderLayer(null, PrimitiveRenderer.CreateEllipseRenderer(true), renderDimensionReference);
         }
 
-        internal RenderLayer GetRenderLayer(int numVertices)
+        private RenderLayer GetPolygonRenderLayer(Dictionary<int, RenderLayer> polygonRenderLayers, int numVertices, bool supportTransparency)
         {
-            if (!_shapeRenderLayers.ContainsKey(numVertices))
+            if (!polygonRenderLayers.ContainsKey(numVertices))
             {
-                var renderLayer = new RenderLayer(null, numVertices, false, _renderDimensionReference);
-                _shapeRenderLayers.Add(numVertices, renderLayer);
+                var renderLayer = new RenderLayer(null, PrimitiveRenderer.CreatePolygonRenderer(numVertices, supportTransparency), _renderDimensionReference);
+                polygonRenderLayers.Add(numVertices, renderLayer);
                 return renderLayer;
             }
             else
             {
-                return _shapeRenderLayers[numVertices];
+                return polygonRenderLayers[numVertices];
             }
+        }
+
+        internal RenderLayer GetPolygonRenderLayer(int numVertices, bool supportTransparency)
+        {
+            if (supportTransparency)
+                return GetPolygonRenderLayer(_transparentPolygonRenderLayers, numVertices, true);
+            else
+                return GetPolygonRenderLayer(_opaquePolygonRenderLayers, numVertices, false);         
         }
 
         public void StartRenderCycle()
         {
             _context.SetRotation(Rotation.None); // TODO: can be used later for different devices
-
             _displayLayer = 0;
+
             State.Gl.Clear((uint)ClearBufferMask.ColorBufferBit | (uint)ClearBufferMask.DepthBufferBit);
         }
 
         public void EndRenderCycle()
         {
-            ShadowRenderLayer.Render();
-            SpriteRenderLayer.Render();            
+            // 1. Draw all opaque objects.
+            State.Gl.DepthMask(true);
+            State.Gl.Disable(EnableCap.Blend);
 
-            foreach (var renderLayer in _shapeRenderLayers)
+            OpaqueEllipseRenderLayer.Render();
+
+            foreach (var renderLayer in _opaquePolygonRenderLayers)
+                renderLayer.Value.Render();
+
+            // 2. Draw all objects with transparency.
+            State.Gl.DepthMask(false);
+            State.Gl.Enable(EnableCap.Blend);
+
+            BlurRectRenderLayer.Render();
+            BlurEllipseRenderLayer.Render();
+            SpriteRenderLayer.Render();
+            TransparentEllipseRenderLayer.Render();
+
+            foreach (var renderLayer in _transparentPolygonRenderLayers)
                 renderLayer.Value.Render();
         }
 
@@ -79,13 +111,13 @@ namespace SilkUI.Renderer.OpenGL
             }
 
             int renderObjectIndex = _renderNodeIndexPool.AssignNextFreeIndex(out _);
-            var topLine = Shape.CreateRect(this, _renderDimensionReference,
+            var topLine = Polygon.CreateRect(this, _renderDimensionReference,
                 x, y, width, lineSize);
-            var leftLine = Shape.CreateRect(this, _renderDimensionReference,
+            var leftLine = Polygon.CreateRect(this, _renderDimensionReference,
                 x, y + lineSize, lineSize, height - 2 * lineSize);
-            var rightLine = Shape.CreateRect(this, _renderDimensionReference,
+            var rightLine = Polygon.CreateRect(this, _renderDimensionReference,
                 x + width - lineSize, y + lineSize, lineSize, height - 2 * lineSize);
-            var bottomLine = Shape.CreateRect(this, _renderDimensionReference,
+            var bottomLine = Polygon.CreateRect(this, _renderDimensionReference,
                 x, y + height - lineSize, width, lineSize);
 
             topLine.Color = color;
@@ -124,7 +156,7 @@ namespace SilkUI.Renderer.OpenGL
                 return -1;
 
             int renderObjectIndex = _renderNodeIndexPool.AssignNextFreeIndex(out _);
-            var rectShape = Shape.CreateRect(this, _renderDimensionReference,
+            var rectShape = Polygon.CreateRect(this, _renderDimensionReference,
                 x, y, width, height);
 
             rectShape.Color = color;
@@ -182,7 +214,7 @@ namespace SilkUI.Renderer.OpenGL
                 return -1;
 
             int renderObjectIndex = _renderNodeIndexPool.AssignNextFreeIndex(out _);
-            var shape = Shape.CreateTriangle(this, _renderDimensionReference, p1, p2, p3);
+            var shape = Polygon.CreateTriangle(this, _renderDimensionReference, p1, p2, p3);
 
             shape.Color = color;
             shape.DisplayLayer = _displayLayer++;
@@ -196,7 +228,7 @@ namespace SilkUI.Renderer.OpenGL
         public int FillPolygon(Color color, params Point[] points)
         {
             int renderObjectIndex = _renderNodeIndexPool.AssignNextFreeIndex(out _);
-            var shape = Shape.CreatePolygon(this, _renderDimensionReference, points);
+            var shape = Polygon.CreatePolygon(this, _renderDimensionReference, points);
 
             shape.Color = color;
             shape.DisplayLayer = _displayLayer++;
@@ -223,7 +255,7 @@ namespace SilkUI.Renderer.OpenGL
                 else
                 {
                     int renderObjectIndex = _renderNodeIndexPool.AssignNextFreeIndex(out _);
-                    var shadow = new Shadow(this, _renderDimensionReference, x, y, width, height, (uint)blurRadius, 0u);
+                    var shadow = Polygon.CreateRect(this, _renderDimensionReference, x, y, width, height, blurRadius == 0 ? (uint?)null : (uint)blurRadius);
 
                     shadow.Color = color;
                     shadow.DisplayLayer = _displayLayer++;

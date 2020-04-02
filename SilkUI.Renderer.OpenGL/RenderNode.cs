@@ -176,7 +176,7 @@ namespace SilkUI.Renderer.OpenGL
                 Layer.UpdateDisplayLayer(_drawIndex.Value, _displayLayer);
         }
 
-        protected void UpdateColor()
+        protected virtual void UpdateColor()
         {
             if (_drawIndex.HasValue)
                 Layer.UpdateColor(_drawIndex.Value, _color);

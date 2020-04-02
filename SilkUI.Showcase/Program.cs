@@ -10,8 +10,8 @@ namespace SilkUI.Showcase
     {
         protected override void CreateFor(Component component)
         {
-            new Panel("panel").AddTo(component);
-            new Button("foo").WithClasses("bar").AddTo(component);                        
+            new Button("foo").WithClasses("bar").AddTo(component);
+            new Panel("panel").AddTo(component);                                    
         }
     }
 
@@ -39,10 +39,10 @@ namespace SilkUI.Showcase
                 BorderColor = "black",
                 BorderLineStyle = BorderLineStyle.Solid,
                 ShadowBlurRadius = 10,
-                ShadowSpreadRadius = -5,
-                ShadowColor = Color.Red,
-                ShadowXOffset = 5,
-                ShadowYOffset = 5,
+                ShadowSpreadRadius = 4,
+                ShadowColor = Color.Lime,
+                ShadowXOffset = 2,
+                ShadowYOffset = 2,
                 ShadowVisible = true
             });
             Add(Selector.ForType(typeof(Panel)).WhenHovered(), new Style()
@@ -73,8 +73,8 @@ namespace SilkUI.Showcase
 
             var button = this.Children["foo"];
 
-            button.X = 100;
-            button.Y = 40;
+            button.X = panel.ClientRectangle.Right - 10;
+            button.Y = panel.ClientRectangle.Bottom - 10;
         }
     }
 

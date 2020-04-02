@@ -13,6 +13,7 @@ namespace SilkUI.Renderer.OpenGL
         private IndexType[] _buffer = null;
         private bool _changedSinceLastCreation = true;
         private int _size = 0;
+        private bool _transparentNodes = false;
 
         public override int Size => _size;
 
@@ -20,10 +21,11 @@ namespace SilkUI.Renderer.OpenGL
 
         public override int Dimension { get; }
 
-        public IndexBuffer(int dimension)
+        public IndexBuffer(int dimension, bool transparentNodes)
         {
             _index = State.Gl.GenBuffer();
             Dimension = dimension;
+            _transparentNodes = transparentNodes; // TODO: we need to order indices
         }
 
         public override void Bind()

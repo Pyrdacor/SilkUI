@@ -4,6 +4,8 @@ using System.Threading;
 
 namespace SilkUI.Renderer.OpenGL
 {
+    using Shaders;
+
 	// VAO
     internal class VertexArrayObject : IDisposable
     {
@@ -14,15 +16,14 @@ namespace SilkUI.Renderer.OpenGL
         private readonly Dictionary<string, IndexBuffer> _indexBuffers = new Dictionary<string, IndexBuffer>(4);
         private readonly Dictionary<string, int> _bufferLocations = new Dictionary<string, int>();
         private bool _disposed = false;
-        private bool _buffersAreBound = false;
-        private ShaderProgram _program = null;
+        private bool _buffersAreBound = false;        
         private object _vaoLock = new object();
-
+        public ShaderBase Shader { get; }
         public static VertexArrayObject ActiveVAO { get; private set; } = null;
 
-        public VertexArrayObject(ShaderProgram program)
+        public VertexArrayObject(ShaderBase shader)
         {
-            _program = program;
+            Shader = shader;
 
         	Create();
         }
@@ -69,22 +70,22 @@ namespace SilkUI.Renderer.OpenGL
 
             lock (_vaoLock)
             {
-                _program.Use();
+                Shader.ShaderProgram.Use();
                 InternalBind(true);
 
                 foreach (var buffer in _positionBuffers)
                 {
-                    _bufferLocations[buffer.Key] = (int)_program.BindInputBuffer(buffer.Key, buffer.Value);
+                    _bufferLocations[buffer.Key] = (int)Shader.ShaderProgram.BindInputBuffer(buffer.Key, buffer.Value);
                 }
 
                 foreach (var buffer in _colorBuffers)
                 {
-                    _bufferLocations[buffer.Key] = (int)_program.BindInputBuffer(buffer.Key, buffer.Value);
+                    _bufferLocations[buffer.Key] = (int)Shader.ShaderProgram.BindInputBuffer(buffer.Key, buffer.Value);
                 }
 
                 foreach (var buffer in _valueBuffers)
                 {
-                    _bufferLocations[buffer.Key] = (int)_program.BindInputBuffer(buffer.Key, buffer.Value);
+                    _bufferLocations[buffer.Key] = (int)Shader.ShaderProgram.BindInputBuffer(buffer.Key, buffer.Value);
                 }
 
                 foreach (var buffer in _indexBuffers)
@@ -103,24 +104,24 @@ namespace SilkUI.Renderer.OpenGL
 
             lock (_vaoLock)
             {
-                _program.Use();
+                Shader.ShaderProgram.Use();
                 InternalBind(true);
 
                 foreach (var buffer in _positionBuffers)
                 {
-                    _program.UnbindInputBuffer((uint)_bufferLocations[buffer.Key]);
+                    Shader.ShaderProgram.UnbindInputBuffer((uint)_bufferLocations[buffer.Key]);
                     _bufferLocations[buffer.Key] = -1;
                 }
 
                 foreach (var buffer in _colorBuffers)
                 {
-                    _program.UnbindInputBuffer((uint)_bufferLocations[buffer.Key]);
+                    Shader.ShaderProgram.UnbindInputBuffer((uint)_bufferLocations[buffer.Key]);
                     _bufferLocations[buffer.Key] = -1;
                 }
 
                 foreach (var buffer in _valueBuffers)
                 {
-                    _program.UnbindInputBuffer((uint)_bufferLocations[buffer.Key]);
+                    Shader.ShaderProgram.UnbindInputBuffer((uint)_bufferLocations[buffer.Key]);
                     _bufferLocations[buffer.Key] = -1;
                 }
 
@@ -145,7 +146,7 @@ namespace SilkUI.Renderer.OpenGL
                 if (ActiveVAO != this)
                 {
                     State.Gl.BindVertexArray(index);
-                    _program.Use();
+                    Shader.ShaderProgram.Use();
                 }
 
                 if (!bindOnly)

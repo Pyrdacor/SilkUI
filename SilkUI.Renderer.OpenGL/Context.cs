@@ -26,7 +26,7 @@ namespace SilkUI.Renderer.OpenGL
             State.Gl.Enable(EnableCap.DepthTest);
             State.Gl.DepthFunc(DepthFunction.Lequal);
 
-            State.Gl.Enable(EnableCap.Blend);
+            State.Gl.Disable(EnableCap.Blend); // will be enabled later
             State.Gl.BlendEquationSeparate(GLEnum.FuncAdd, GLEnum.FuncAdd);
             State.Gl.BlendFuncSeparate(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha, BlendingFactor.One, BlendingFactor.Zero);
 
