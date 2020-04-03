@@ -13,7 +13,7 @@
     <PackageReference Include="System.Drawing.Common" Version="4.7.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SilkUI.Common\SilkUI.Common.csproj" />
+    <ProjectReference Include="..\SilkUI.Core\SilkUI.Core.csproj" />
     <ProjectReference Include="..\SilkUI.Renderer.Common\SilkUI.Renderer.Common.csproj" />
   </ItemGroup>
 </Project>

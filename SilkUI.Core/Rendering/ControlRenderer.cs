@@ -115,5 +115,10 @@ namespace SilkUI
         {
             return RunDrawCall(control, reference, () => _renderer.DrawShadow(x, y, width, height, color, blurRadius, inset));
         }
+
+        public int DrawText(Control control, int? reference, int x, int y, string text, Font font, Color color)
+        {
+            return RunDrawCall(control, reference, () => _renderer.DrawText(x, y, text, font, color));
+        }
     }
 }

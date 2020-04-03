@@ -22,6 +22,7 @@ namespace SilkUI
         int FillTriangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color);
         int FillPolygon(Color color, params Point[] points);
         int DrawShadow(int x, int y, int width, int height, Color color, int blurRadius, bool inset);
+        int DrawText(int x, int y, string text, Font font, Color color);
     }
 
     public interface IControlRendererFactory

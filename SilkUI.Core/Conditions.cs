@@ -1,4 +1,4 @@
-namespace SilkUI.Common
+namespace SilkUI.Core
 {
     public class Conditions
     {

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\SilkUI.Common\SilkUI.Common.csproj" />
+    <ProjectReference Include="..\SilkUI.Core\SilkUI.Core.csproj" />
     <ProjectReference Include="..\SilkUI.Renderer.OpenGL\SilkUI.Renderer.OpenGL.csproj" />
   </ItemGroup>
   <ItemGroup>
