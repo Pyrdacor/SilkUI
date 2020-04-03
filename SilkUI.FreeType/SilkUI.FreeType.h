@@ -58,7 +58,7 @@ namespace SilkUI
 
 		private class FreeTypeInterface
 		{
-		public:
+		private:
 			FT_Library library;
 
 		public:
@@ -80,17 +80,17 @@ namespace SilkUI
 				return std::string((char*)pinned, bytes->Length);
 			}
 
-			Font LoadFont(String^ fontFile, Int32 fontSize, Int32 faceIndex)
+			Font LoadFont(String^ fontFile, Int32 fontSize)
 			{
 				FontInfo fontInfo;
-				FontFace firstFace = LoadFontFace(fontFile, fontSize, faceIndex, fontInfo);
+				FontFace firstFace = LoadFontFace(fontFile, fontSize, 0, fontInfo);
 				return ProcessFont(firstFace, fontFile, fontSize, fontInfo);
 			}
 
-			Font LoadFont(array<Byte>^ data, Int32 fontSize, Int32 faceIndex)
+			Font LoadFont(array<Byte>^ data, Int32 fontSize)
 			{
 				FontInfo fontInfo;
-				FontFace firstFace = LoadFontFace(data, fontSize, faceIndex, fontInfo);
+				FontFace firstFace = LoadFontFace(data, fontSize, 0, fontInfo);
 				return ProcessFont(firstFace, data, fontSize, fontInfo);
 			}
 
@@ -243,14 +243,14 @@ namespace SilkUI
 				delete freetype;
 			}
 
-			Font LoadFont(String^ fontFile, Int32 fontSize, Int32 faceIndex)
+			Font LoadFont(String^ fontFile, Int32 fontSize)
 			{
-				return freetype->LoadFont(fontFile, fontSize, faceIndex);
+				return freetype->LoadFont(fontFile, fontSize);
 			}
 
-			Font LoadFont(array<Byte>^ data, Int32 fontSize, Int32 faceIndex)
+			Font LoadFont(array<Byte>^ data, Int32 fontSize)
 			{
-				return freetype->LoadFont(data, fontSize, faceIndex);
+				return freetype->LoadFont(data, fontSize);
 			}
 		};
 	}

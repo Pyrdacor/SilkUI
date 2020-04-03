@@ -5,8 +5,6 @@ using Silk.NET.Windowing.Common;
 
 namespace SilkUI.Renderer.OpenGL
 {
-    using Shaders;
-
     internal class ControlRenderer : IControlRenderer
     {
         internal RenderLayer SpriteRenderLayer { get; } // for now this is based on an atlas texture
@@ -266,6 +264,12 @@ namespace SilkUI.Renderer.OpenGL
                     return renderObjectIndex;
                 }
             }
+        }
+
+        public int DrawText(int x, int y, string text, Font font, Color color)
+        {
+            // TODO
+            return -1;
         }
     }
 
