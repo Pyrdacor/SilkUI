@@ -6,17 +6,13 @@ namespace SilkUI
     {
         public MouseButton Button { get; }
         public KeyModifiers KeyModifiers { get; }
-        public float PreciseX { get; }
-        public float PreciseY { get; }
 
         internal MouseButtonEventArgs(float x, float y, MouseButton button,
             KeyModifiers modifiers = KeyModifiers.None)
-            : base(Util.Round(x), Util.Round(y))
+            : base(x, y)
         {
             Button = button;
             KeyModifiers = modifiers;
-            PreciseX = x;
-            PreciseY = y;
         }
 
         internal override MouseEventArgs CloneWithOffset(int x, int y)

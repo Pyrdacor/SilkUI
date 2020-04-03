@@ -8,16 +8,9 @@ namespace SilkUI
     {
         private Component _parent;
         protected bool NeedsRedraw { get; private set; } = true;
-        internal virtual ControlRenderer ControlRenderer
-        {
-            get => Parent != null ? Parent.ControlRenderer : null;
-        }
-        internal virtual InputEventManager InputEventManager
-        {
-            get => Parent != null ? Parent.InputEventManager : null;
-        }
-        private readonly ControlStyle style = new ControlStyle();
-        internal protected ControlStyle Style => style;
+        internal virtual ControlRenderer ControlRenderer => Parent?.ControlRenderer;
+        internal virtual InputEventManager InputEventManager => Parent?.InputEventManager;
+        internal protected ControlStyle Style { get; } = new ControlStyle();
 
 
         #region Lifecycle Hooks
@@ -78,12 +71,12 @@ namespace SilkUI
         public bool Hovered
         {
             get => Enabled && Visible && _hovered.HasValue && _hovered.Value.Value;
-            set => _hovered.Value = value && Enabled && Visible;
+            internal set => _hovered.Value = value && Enabled && Visible;
         }
         public bool Focused
         {
             get => Enabled && Visible && _focused.HasValue && _focused.Value.Value;
-            set => _focused.Value = value && Enabled && Visible;
+            internal set => _focused.Value = value && Enabled && Visible;
         }
 
         #endregion
@@ -211,6 +204,8 @@ namespace SilkUI
         public event MouseButtonEventHandler MouseUp;
         public event MouseButtonEventHandler MouseClick;
         public event MouseButtonEventHandler MouseDoubleClick;
+        public event MouseButtonEventHandler MouseDownOutside;
+        public event MouseButtonEventHandler MouseUpOutside;
         public event KeyEventHandler KeyDown;
         public event KeyEventHandler KeyUp;
 
@@ -260,8 +255,6 @@ namespace SilkUI
         internal void OnMouseMove(MouseMoveEventArgs args)
         {
             MouseMove?.Invoke(this, args);
-
-            Hovered = ClientRectangle.Contains(args.X, args.Y);
         }
 
         internal void OnMouseDown(MouseButtonEventArgs args)
@@ -282,6 +275,16 @@ namespace SilkUI
         internal void OnMouseDoubleClick(MouseButtonEventArgs args)
         {
             MouseDoubleClick?.Invoke(this, args);
+        }
+
+        internal void OnMouseUpOutside(MouseButtonEventArgs args)
+        {
+            MouseUpOutside?.Invoke(this, args);
+        }
+
+        internal void OnMouseDownOutside(MouseButtonEventArgs args)
+        {
+            MouseDownOutside?.Invoke(this, args);
         }
 
         internal void OnKeyDown(KeyEventArgs args)
@@ -423,10 +426,70 @@ namespace SilkUI
             // ResetInvalidation();
         }
 
+        /// <summary>
+        /// Converts an absolute position (= relative to the root component)
+        /// to a position relative to the client area of the control.
+        /// </summary>
+        public Point PointToClient(Point absolutePosition)
+        {
+            return absolutePosition.Sub(AbsoluteLocation);
+        }
+
+        /// <summary>
+        /// Converts a client position (= relative to the control's client area)
+        /// to an absolute position which is relative to the root component.
+        /// </summary>
+        public Point PointFromClient(Point clientPosition)
+        {
+            return clientPosition.Add(AbsoluteLocation);
+        }
+
+        /// <summary>
+        /// Checks if the given position is inside the control.
+        /// The position is considered to be in relation to the client area.
+        /// </summary>
+        public bool ContainsPoint(Point position)
+        {
+            return new Rectangle(Point.Empty, Size).Contains(position);
+        }
+
         protected void RenderChildControls(RenderEventArgs args)
         {
             foreach (var child in InternalChildren)
                 child.RenderControl(args);
+        }
+
+        /// <summary>
+        /// Retrieves the child at the given position.
+        /// </summary>
+        /// <param name="position">The position relative to the control's client area.</param>
+        /// <param name="deepSearch">If false only direct children are considered otherwise all descendants.</param>
+        /// <returns>The child control or null if none is found at the position.</returns>
+        public Control GetChildAtPoint(Point position, bool deepSearch, bool allowDisabled = true)
+        {
+            return GetChildAtAbsolutePosition(PointFromClient(position), deepSearch, allowDisabled);
+        }
+
+        /// <summary>
+        /// Retrieves the child at the given absolute position.
+        /// </summary>
+        /// <param name="position">The position relative to the root component.</param>
+        /// <param name="deepSearch">If false only direct children are considered otherwise all descendants.</param>
+        /// <returns>The child control or null if none is found at the position.</returns>
+        public Control GetChildAtAbsolutePosition(Point position, bool deepSearch, bool allowDisabled = true)
+        {
+            foreach (var child in InternalChildren)
+            {
+                if (child.Visible && (child.Enabled || allowDisabled) && child.AbsoluteRectangle.Contains(position))
+                {
+                    if (deepSearch)
+                        return child.GetChildAtAbsolutePosition(position, true) ?? child;
+                    else
+                        return child;
+                }
+            }
+
+            return null;
         }
 
         protected void ResetInvalidation()

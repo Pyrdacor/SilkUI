@@ -1,6 +1,6 @@
 namespace SilkUI
 {
-    public class PropagatedEventArgs : System.EventArgs
+    public class PropagatedEventArgs : EventArgs
     {
         public bool CancelPropagation { get; set; } = false;
     }

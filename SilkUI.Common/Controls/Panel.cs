@@ -49,7 +49,7 @@ namespace SilkUI.Controls
         protected override void OnRender(RenderEventArgs args)
         {
             var renderer = args.Renderer;
-            var rectangle = ClientRectangle;
+            var rectangle = AbsoluteRectangle;
             var borderSize = Style.Get<AllDirectionStyleValue<int>>("border.size");
             var borderColor = Style.Get<AllDirectionStyleValue<ColorValue>>("border.color");
             var borderStyle = Style.Get<AllDirectionStyleValue<BorderLineStyle>>("border.linestyle", BorderLineStyle.None);

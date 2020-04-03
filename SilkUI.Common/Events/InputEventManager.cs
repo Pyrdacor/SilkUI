@@ -16,6 +16,10 @@ namespace SilkUI
         private KeyModifiers _currentModifiers = KeyModifiers.None;
         private readonly Dictionary<MouseButton, PointF> _lastMouseDownPositions = new Dictionary<MouseButton, PointF>();
 
+        public event Action<Point> GlobalMouseDown;
+        public event Action<Point> GlobalMouseUp;
+        public event Action<Point> GlobalMouseMove;
+
         public InputEventManager(IInputContext inputContext)
         {
             _inputContext = inputContext;
@@ -33,20 +37,29 @@ namespace SilkUI
             if (mouse != null)
             {
                 mouse.MouseMove += (mouse, point) =>
+                {
                     RunMouseHandlers((c, args) => c.OnMouseMove(args),
                         new MouseMoveEventArgs(point.X, point.Y, _currentMouseButtons)
                     );
+                    GlobalMouseMove?.Invoke(mouse.Position.Approximate());
+                };
                 mouse.MouseDown += (mouse, button) =>
                 {
                     _lastMouseDownPositions[button] = mouse.Position;
                     RunMouseHandlers((c, args) => c.OnMouseDown(args),
-                        new MouseButtonEventArgs(mouse.Position.X, mouse.Position.Y, button, _currentModifiers)
+                        new MouseButtonEventArgs(mouse.Position.X, mouse.Position.Y, button, _currentModifiers),
+                        (c, args) => c.OnMouseDownOutside(args)
                     );
+                    GlobalMouseDown?.Invoke(mouse.Position.Approximate());
                 };
                 mouse.MouseUp += (mouse, button) =>
+                {
                     RunMouseHandlers((c, args) => c.OnMouseUp(args),
-                        new MouseButtonEventArgs(mouse.Position.X, mouse.Position.Y, button, _currentModifiers)
+                        new MouseButtonEventArgs(mouse.Position.X, mouse.Position.Y, button, _currentModifiers),
+                        (c, args) => c.OnMouseUpOutside(args)
                     );
+                    GlobalMouseUp?.Invoke(mouse.Position.Approximate());
+                };
                 mouse.Click += (mouse, button) =>
                     RunMouseHandlers((c, args) => c.OnMouseClick(args),
                         new MouseButtonEventArgs(_lastMouseDownPositions[button].X,
@@ -83,7 +96,8 @@ namespace SilkUI
             }
         }
 
-        private void RunMouseHandlers<T>(Action<Control, T> handler, T args) where T : MouseEventArgs
+        private void RunMouseHandlers<T>(Action<Control, T> handler, T args,
+            Action<Control, T> outsideHandler = null) where T : MouseEventArgs
         {
             // In general later created controls will be
             // registered later so childs come later in
@@ -92,14 +106,24 @@ namespace SilkUI
             // we reverse the collection order here.
             for (int i = _registeredControls.Count - 1; i >= 0; --i)
             {
-                if (args.CancelPropagation)
-                    return;
+                if (args.CancelPropagation && outsideHandler == null)
+                    return; // Outside handlers must be called in any case.
 
                 var absoluteRect = _registeredControls[i].AbsoluteRectangle;
 
                 if (absoluteRect.Contains(args.X, args.Y))
                 {
-                    handler(_registeredControls[i], (T)args.CloneWithOffset
+                    if (!args.CancelPropagation)
+                    {
+                        handler(_registeredControls[i], (T)args.CloneWithOffset
+                        (
+                            -absoluteRect.X, -absoluteRect.Y
+                        ));
+                    }
+                }
+                else
+                {
+                    outsideHandler?.Invoke(_registeredControls[i], (T)args.CloneWithOffset
                     (
                         -absoluteRect.X, -absoluteRect.Y
                     ));

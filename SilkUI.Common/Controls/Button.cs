@@ -33,6 +33,11 @@ namespace SilkUI.Controls
                 if (e.Button == MouseButton.Left)
                     Pressed = false;
             };
+            MouseUpOutside += (_, e) =>
+            {
+                if (e.Button == MouseButton.Left)
+                    Pressed = false;
+            };
             _pressed.InternalValueChanged += Invalidate;
         }
 
