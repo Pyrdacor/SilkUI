@@ -1,11 +1,21 @@
 ﻿using System;
+using System.Collections.Generic;
 using Silk.NET.OpenGL;
 
 namespace SilkUI.Renderer.OpenGL
 {
+    internal struct FreeBufferChunk
+    {
+        public int Index;
+        public int Size;
+    }
+
     internal abstract class BufferObject<T> : IDisposable
     {
+        protected T[] _buffer = null;
+        protected bool _changedSinceLastCreation = true;
         public abstract int Dimension { get; }
+        protected abstract int BytesPerValue { get; }
         public bool Normalized { get; protected set; } = false;
         public abstract int Size { get; }
         public abstract VertexAttribPointerType Type { get; }
@@ -16,28 +26,44 @@ namespace SilkUI.Renderer.OpenGL
 
         internal abstract bool RecreateUnbound();
 
-        protected static T[] EnsureBufferSize(T[] buffer, int size, out bool changed)
+        protected void EnsureBufferSize(int size)
         {
-            changed = false;
-
-            if (buffer == null)
+            if (_buffer == null)
             {
-                changed = true;
-
                 // first we just use a 256B buffer
-                return new T[256];
+                _buffer = new T[256];
             }
-            else if (buffer.Length <= size) // we need to recreate the buffer
+            else if (_buffer.Length <= size) // we need to recreate the buffer
             {
-                changed = true;
-
-                if (buffer.Length < 0xffff) // double size up to 64K
-                    Array.Resize(ref buffer, buffer.Length << 1);
+                if (_buffer.Length < 0xffff) // double size up to 64K
+                    Array.Resize(ref _buffer, _buffer.Length << 1);
                 else // increase by 1K after 64K reached
-                    Array.Resize(ref buffer, buffer.Length + 1024);
+                    Array.Resize(ref _buffer, _buffer.Length + 1024);
+            }
+        }
+
+        public void Defragment(int newSize, List<FreeBufferChunk> freeBufferChunks)
+        {
+            int bytesPerEntry = Dimension * BytesPerValue;
+            var defragmentedBuffer = new T[newSize];
+            int targetOffset = 0;
+            int sourceOffset = 0;
+
+            for (int i = 0; i < freeBufferChunks.Count; ++i)
+            {
+                int dataSize = freeBufferChunks[i].Index * bytesPerEntry - sourceOffset;
+                System.Buffer.BlockCopy(_buffer, sourceOffset, defragmentedBuffer, targetOffset, dataSize);
+                sourceOffset += dataSize + freeBufferChunks[i].Size * bytesPerEntry;
+                targetOffset += dataSize;
             }
 
-            return buffer;
+            int end = (freeBufferChunks[^1].Index + freeBufferChunks[^1].Size) * bytesPerEntry;
+
+            if (end < _buffer.Length)
+                System.Buffer.BlockCopy(_buffer, sourceOffset, defragmentedBuffer, targetOffset, _buffer.Length - end);
+
+            _buffer = defragmentedBuffer;
+            _changedSinceLastCreation = true;
         }
     }
 }

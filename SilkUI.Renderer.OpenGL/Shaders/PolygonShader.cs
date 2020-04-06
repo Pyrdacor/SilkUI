@@ -21,7 +21,6 @@
             in ivec2 {PositionName};
             in uint {LayerName};
             in uvec4 {ColorName};
-            uniform float {ZName};
             uniform mat4 {ProjectionMatrixName};
             uniform mat4 {ModelViewMatrixName};
             out vec4 pixelColor;
@@ -29,7 +28,7 @@
             {{
                 vec2 pos = vec2(float({PositionName}.x) + 0.49f, float({PositionName}.y) + 0.49f);
                 pixelColor = vec4({ColorName}.r / 255.0f, {ColorName}.g / 255.0f, {ColorName}.b / 255.0f, {ColorName}.a / 255.0f);
-                gl_Position = {ProjectionMatrixName} * {ModelViewMatrixName} * vec4(pos, 1.0f - {ZName} - float({LayerName}) * 0.00001f, 1.0f);
+                gl_Position = {ProjectionMatrixName} * {ModelViewMatrixName} * vec4(pos, 1.0f - float({LayerName}) * 0.00001f, 1.0f);
             }}
         ";
 

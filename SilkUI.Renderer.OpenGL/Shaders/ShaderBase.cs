@@ -9,7 +9,6 @@ namespace SilkUI.Renderer.OpenGL.Shaders
         internal static readonly string PositionName = "position";
         internal static readonly string ModelViewMatrixName = "mvMat";
         internal static readonly string ProjectionMatrixName = "projMat";
-        internal static readonly string ZName = "z";
         internal static readonly string LayerName = "layer";
         internal static readonly string ColorName = "color";
         internal static readonly string OriginName = "origin";
@@ -76,10 +75,5 @@ namespace SilkUI.Renderer.OpenGL.Shaders
         }
 
         public ShaderProgram ShaderProgram => _shaderProgram;
-
-        public void SetZ(float z)
-        {
-            _shaderProgram.SetInput(ZName, z);
-        }
     }
 }

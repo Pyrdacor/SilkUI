@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Drawing;
-using System.Drawing.Imaging;
 
 namespace SilkUI.Renderer.OpenGL
 {
@@ -21,12 +20,35 @@ namespace SilkUI.Renderer.OpenGL
         public override int Width => _width;
         public override int Height => _height;
 
+        public void AddSprite(Point position, byte[] data, int width, int height, bool grayscale)
+        {
+            if (grayscale)
+                AddGrayscaleSprite(position, data, width, height);
+            else
+                AddSprite(position, data, width, height);
+        }
+
         public void AddSprite(Point position, byte[] data, int width, int height)
         {
             for (int y = 0; y < height; ++y)
             {
                 Buffer.BlockCopy(data, y * width * 4, _data, (position.X + (position.Y + y) * Width) * 4, width * 4);
             }
+        }
+
+        public void AddGrayscaleSprite(Point position, byte[] data, int width, int height)
+        {
+            byte[] rgbaData = new byte[width * height * 4];
+
+            for (int i = 0; i < width * height; ++i)
+            {
+                rgbaData[i * 4 + 0] = data[i];
+                rgbaData[i * 4 + 1] = data[i];
+                rgbaData[i * 4 + 2] = data[i];
+                rgbaData[i * 4 + 3] = data[i];
+            }
+
+            AddSprite(position, rgbaData, width, height);
         }
 
         public void SetPixel(int x, int y, byte r, byte g, byte b, byte a = 255)
@@ -50,11 +72,14 @@ namespace SilkUI.Renderer.OpenGL
             Buffer.BlockCopy(pixelData, 0, _data, 0, pixelData.Length);
         }
 
-        public void Finish(int numMipMapLevels)
+        public void Finish(int numMipMapLevels, PixelFormat pixelFormat = PixelFormat.BGRA8)
         {
-            Create(PixelFormat.BGRA8, _data, numMipMapLevels);
+            if (_data != null)
+            {
+                Create(pixelFormat, _data, numMipMapLevels);
 
-            _data = null;
+                _data = null;
+            }
         }
 
         public void Resize(int width, int height)

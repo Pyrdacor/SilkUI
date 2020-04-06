@@ -1,4 +1,4 @@
-using System.Reflection;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 
@@ -7,20 +7,21 @@ namespace SilkUI.Renderer.OpenGL
     internal class TextureAtlas
     {
         public MutableTexture AtlasTexture { get; } = new MutableTexture(0, 0);
-        private readonly Dictionary<Image, Point> _images = new Dictionary<Image, Point>();
+        private readonly Dictionary<ImageHandle, Point> _images = new Dictionary<ImageHandle, Point>();
 
-        public Point AddTexture(Image image)
+        public Point AddTexture(ImageHandle imageHandle)
         {
-            if (!_images.ContainsKey(image))
+            if (!_images.ContainsKey(imageHandle))
             {
                 // TODO: place the image so the atlas size uses minimal space
-                // AtlasTexture.AddSprite(x, y, imageData, image.Width, image.Height);
-                // return position
-                return Point.Empty;
+                var position = new Point(AtlasTexture.Width, 0);
+                AtlasTexture.Resize(AtlasTexture.Width + imageHandle.Width, Math.Max(AtlasTexture.Height, imageHandle.Height));
+                AtlasTexture.AddSprite(position, imageHandle.Data, imageHandle.Width, imageHandle.Height, imageHandle.BytesPerPixel == 1);
+                return position;
             }
             else
             {
-                return _images[image];
+                return _images[imageHandle];
             }
         }
     }

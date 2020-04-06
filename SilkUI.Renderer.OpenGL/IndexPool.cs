@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace SilkUI.Renderer.OpenGL
 {
@@ -8,20 +7,16 @@ namespace SilkUI.Renderer.OpenGL
         private readonly List<int> _releasedIndices = new List<int>();
         private int _firstFree = 0;
 
-        public int AssignNextFreeIndex(out bool reused)
+        public int AssignNextFreeIndex()
         {
             if (_releasedIndices.Count > 0)
             {
-                reused = true;
-
                 int index = _releasedIndices[0];
 
                 _releasedIndices.RemoveAt(0);
 
                 return index;
             }
-
-            reused = false;
 
             if (_firstFree == int.MaxValue)
             {

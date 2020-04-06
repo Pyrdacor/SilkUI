@@ -7,25 +7,21 @@ namespace SilkUI.Renderer.OpenGL
 
     internal class IndexBuffer : BufferObject<IndexType>
     {
+        public const IndexType PrimitiveRestartIndex = IndexType.MaxValue;
+
         private uint _index = 0;
         private bool _disposed = false;
         private readonly object _bufferLock = new object();
-        private IndexType[] _buffer = null;
-        private bool _changedSinceLastCreation = true;
         private int _size = 0;
-        private bool _transparentNodes = false;
 
         public override int Size => _size;
-
         public override VertexAttribPointerType Type => VertexAttribPointerType.UnsignedInt;
+        public override int Dimension => 1;
+        protected override int BytesPerValue => 4;
 
-        public override int Dimension { get; }
-
-        public IndexBuffer(int dimension, bool transparentNodes)
+        public IndexBuffer()
         {
             _index = State.Gl.GenBuffer();
-            Dimension = dimension;
-            _transparentNodes = transparentNodes; // TODO: we need to order indices
         }
 
         public override void Bind()
@@ -93,58 +89,46 @@ namespace SilkUI.Renderer.OpenGL
             return true;
         }
 
-        public void InsertPrimitive(int offset, IndexType restartIndex)
+        public void AddPrimitive(int numVertices, int firstIndex)
         {
-            int numIndices = Dimension;
-            int numVertices = numIndices - 1; // 1 for the restart index
-            int vertexOffset = (offset / numIndices) * numVertices;
-
-            if (offset > int.MaxValue - numIndices)
-                throw new Exceptions.InsufficientResourcesException("Too many polygons to render.");
-
-            if (_size < offset + numIndices)
-            {
-                _buffer = EnsureBufferSize(_buffer, (int)offset + numIndices, out _);
-                _size = _buffer.Length;
-                _changedSinceLastCreation = true;
-            }
+            EnsureBufferSize(_size + numVertices + 1);
 
             for (int i = 0; i < numVertices; ++i)
-                _buffer[offset++] = (IndexType)vertexOffset++;
-            _buffer[offset++] = restartIndex;
+                _buffer[_size++] = (IndexType)firstIndex++;
+            _buffer[_size++] = PrimitiveRestartIndex;
+
+            _changedSinceLastCreation = true;
+        }
+
+        public void Clear()
+        {
+            _buffer = null;
+            _size = 0;
         }
 
         public override void Dispose()
         {
-            Dispose(true);
-        }
-
-        void Dispose(bool disposing)
-        {
             if (!_disposed)
             {
-                if (disposing)
+                State.Gl.BindBuffer(GLEnum.ElementArrayBuffer, 0);
+
+                if (_index != 0)
                 {
-                    State.Gl.BindBuffer(GLEnum.ElementArrayBuffer, 0);
+                    State.Gl.DeleteBuffer(_index);
 
-                    if (_index != 0)
+                    if (_buffer != null)
                     {
-                        State.Gl.DeleteBuffer(_index);
-
-                        if (_buffer != null)
+                        lock (_bufferLock)
                         {
-                            lock (_bufferLock)
-                            {
-                                _buffer = null;
-                            }
+                            _buffer = null;
                         }
-
-                        _size = 0;
-                        _index = 0;
                     }
 
-                    _disposed = true;
+                    _size = 0;
+                    _index = 0;
                 }
+
+                _disposed = true;
             }
         }
     }

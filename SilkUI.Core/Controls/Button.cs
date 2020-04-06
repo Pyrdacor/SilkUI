@@ -8,12 +8,20 @@ namespace SilkUI.Controls
     /// </summary>
     public class Button : Panel
     {
+        private int? _textRef;
         private BoolProperty _pressed = new BoolProperty(nameof(Pressed), false);
+        private StringProperty _text = new StringProperty(nameof(Text), "");
 
         public bool Pressed
         {
             get => Enabled && Visible && _pressed.HasValue && _pressed.Value.Value;
-            set => _pressed.Value = value && Enabled && Visible;
+            internal set => _pressed.Value = value && Enabled && Visible;
+        }
+
+        public string Text
+        {
+            get => _text.Value ?? "";
+            set => _text.Value = value;
         }
 
         public Button(string id = null)
@@ -39,6 +47,7 @@ namespace SilkUI.Controls
                     Pressed = false;
             };
             _pressed.InternalValueChanged += Invalidate;
+            _text.InternalValueChanged += Invalidate;
         }
 
         protected override void OnRender(RenderEventArgs args)
@@ -69,6 +78,28 @@ namespace SilkUI.Controls
 
             // Draw with set styles.
             base.OnRender(args);
+
+            // Draw text.
+            if (!string.IsNullOrWhiteSpace(Text)) // TODO: text styles
+                _textRef = args.Renderer.DrawText(this, _textRef, X, Y, Text, new Font()
+                {
+                    // TODO: Test what happens if not all is initialized here
+                    Name = "arial.ttf",
+                    Size = 18,
+                    FallbackNames = new string[] { },
+                    Options = FontOptions.None
+                }, Color.Red);
+        }
+
+        internal override void DestroyView()
+        {
+            if (_textRef.HasValue)
+            {
+                ControlRenderer.RemoveRenderObject(_textRef.Value);
+                _textRef = null;
+            }
+
+            base.DestroyView();
         }
     }
 }

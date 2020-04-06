@@ -6,19 +6,15 @@ namespace SilkUI.Renderer.OpenGL
     internal class PositionBuffer : BufferObject<short>
     {
         private uint _index = 0;
-        private bool _disposed = false;
-        private short[] _buffer = null;
-        private readonly object _bufferLock = new object();
         private int _size;
-        private readonly IndexPool _indices = new IndexPool();
-        private bool _changedSinceLastCreation = true;
+        private bool _disposed = false;
+        private readonly object _bufferLock = new object();        
         private readonly GLEnum _usageHint = GLEnum.DynamicDraw;
 
         public override int Size => _size;
-
         public override VertexAttribPointerType Type => VertexAttribPointerType.Short;
-
         public override int Dimension => 2;
+        protected override int BytesPerValue => 2;
 
         public PositionBuffer(bool staticData)
         {
@@ -28,114 +24,44 @@ namespace SilkUI.Renderer.OpenGL
                 _usageHint = GLEnum.StaticDraw;
         }
 
-        public bool IsPositionValid(int index)
+        public void Add(int index, short x, short y)
         {
-            index *= Dimension; // 2 coords each
+            EnsureBufferSize(index * Dimension + Dimension);
 
-            if (index < 0 || index >= _buffer.Length)
-                return false;
+            int bufferIndex = index * Dimension;
 
-            return _buffer[index] != short.MaxValue;
-        }
+            if (bufferIndex == _size)
+                _size += Dimension;
 
-        public int Add(short x, short y, int index = -1)
-        {
-            bool reused;
+            _buffer[bufferIndex + 0] = x;
+            _buffer[bufferIndex + 1] = y;
 
-            if (index == -1)
-                index = _indices.AssignNextFreeIndex(out reused);
-            else
-                reused = _indices.AssignIndex(index);
-
-            if (_buffer == null)
-            {
-                _buffer = new short[256];
-                _buffer[0] = x;
-                _buffer[1] = y;
-                _size = 2;
-                _changedSinceLastCreation = true;
-            }
-            else
-            {
-                _buffer = EnsureBufferSize(_buffer, index * 2, out bool changed);
-
-                if (!reused)
-                    _size += 2;
-
-                int bufferIndex = index * 2;
-
-                if (_buffer[bufferIndex + 0] != x ||
-                    _buffer[bufferIndex + 1] != y)
-                {
-                    _buffer[bufferIndex + 0] = x;
-                    _buffer[bufferIndex + 1] = y;
-
-                    _changedSinceLastCreation = true;
-                }
-                else if (changed)
-                {
-                    _changedSinceLastCreation = true;
-                }
-            }
-
-            return index;
-        }
-
-        public void Update(int index, short x, short y)
-        {
-            int bufferIndex = index * 2;
-
-            if (_buffer[bufferIndex + 0] != x ||
-                _buffer[bufferIndex + 1] != y)
-            {
-                _buffer[bufferIndex + 0] = x;
-                _buffer[bufferIndex + 1] = y;
-
-                _changedSinceLastCreation = true;
-            }
-        }
-
-        public void Remove(int index)
-        {
-            _indices.UnassignIndex(index);
-        }
-
-        public void ReduceSizeTo(int size)
-        {
-            _size = size;
+            _changedSinceLastCreation = true;
         }
 
         public override void Dispose()
         {
-            Dispose(true);
-        }
-
-        void Dispose(bool disposing)
-        {
             if (!_disposed)
             {
-                if (disposing)
+                State.Gl.BindBuffer(GLEnum.ArrayBuffer, 0);
+
+                if (_index != 0)
                 {
-                    State.Gl.BindBuffer(GLEnum.ArrayBuffer, 0);
+                    State.Gl.DeleteBuffer(_index);
 
-                    if (_index != 0)
+                    if (_buffer != null)
                     {
-                        State.Gl.DeleteBuffer(_index);
-
-                        if (_buffer != null)
+                        lock (_bufferLock)
                         {
-                            lock (_bufferLock)
-                            {
-                                _buffer = null;
-                            }
+                            _buffer = null;
                         }
-
-                        _size = 0;
-                        _index = 0;
                     }
 
-                    _disposed = true;
+                    _size = 0;
+                    _index = 0;
                 }
+
+                _disposed = true;
             }
         }
 

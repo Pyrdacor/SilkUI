@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 
 namespace SilkUI
 {
@@ -14,7 +13,7 @@ namespace SilkUI
     public class ControlRenderer
     {
         private IControlRenderer _renderer;
-        private Dictionary<int, RenderReference> _lastRenderObjects;
+        private readonly Dictionary<int, RenderReference> _lastRenderObjects = new Dictionary<int, RenderReference>();
         private readonly List<RenderReference> _currentRenderObjects = new List<RenderReference>();
         private readonly List<Control> _skippedControls = new List<Control>();
         internal bool ForceRedraw { get; set; } = false;
@@ -26,7 +25,8 @@ namespace SilkUI
 
         internal void Init()
         {
-            _lastRenderObjects = _currentRenderObjects.ToDictionary(o => o.Index, o => o);
+            foreach (var lastCycleRenderObjects in _currentRenderObjects)
+                _lastRenderObjects[lastCycleRenderObjects.Index] = lastCycleRenderObjects;
             _currentRenderObjects.Clear();
             _skippedControls.Clear();
             _renderer.StartRenderCycle();
@@ -61,11 +61,14 @@ namespace SilkUI
             {
                 if (ForceRedraw)
                 {
-                    _renderer.RemoveRenderObject(reference.Value);
+                    _renderer.ReplaceRenderObjectWithFollowingDrawCall(reference.Value);
                     renderObjectIndex = drawActionWrapper();
-                    _currentRenderObjects.Add(new RenderReference() { Control = control, Index = renderObjectIndex });
-                    _lastRenderObjects.Remove(reference.Value);
-                    return renderObjectIndex;
+                    
+                    if (renderObjectIndex == -1) // Not drawn anything -> Remove what should have replaced.
+                    {
+                        // As we don't remove it from _lastRenderObjects, it will be removed automatically.
+                        return -1;
+                    }
                 }
                 else
                     renderObjectIndex = reference.Value;
@@ -96,7 +99,7 @@ namespace SilkUI
             return RunDrawCall(control, reference, () => _renderer.DrawRectangleLine(x, y, width, height, color, lineStyle));
         }
 
-        public int DrawImage(Control control, int? reference, int x, int y, Image image, Color? colorOverlay = null)
+        public int DrawImage(Control control, int? reference, int x, int y, Bitmap image, Color? colorOverlay = null)
         {
             return RunDrawCall(control, reference, () => _renderer.DrawImage(x, y, image, colorOverlay));
         }

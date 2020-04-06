@@ -422,8 +422,8 @@ namespace SilkUI
             Render?.Invoke(this, args);
             RenderChildControls(args);
 
-            // TODO: this doesn't work so disabled for now
-            // ResetInvalidation();
+            if (NeedsRedraw && (Parent == null || !Parent.NeedsRedraw))
+                ResetInvalidation();
         }
 
         /// <summary>

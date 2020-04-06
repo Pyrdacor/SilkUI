@@ -8,9 +8,9 @@
         $@"
             {FragmentShaderHeader}
             uniform vec3 { ColorKeyName } = vec3(1, 0, 1);
-            uniform vec4 { ColorName } = vec4(1, 1, 1, 1);
             uniform sampler2D { SamplerName };
             in vec2 varTexCoord;
+            in vec4 overlayColor;
             
             void main()
             {{
@@ -19,7 +19,7 @@
                 if (pixelColor.r == {ColorKeyName}.r && pixelColor.g == {ColorKeyName}.g && pixelColor.b == {ColorKeyName}.b)
                     discard;
                 
-                {FragmentOutColorName} = pixelColor * {ColorName};
+                {FragmentOutColorName} = pixelColor * overlayColor;
             }}
         ";
 
@@ -29,16 +29,21 @@
             in ivec2 {PositionName};
             in ivec2 {TexCoordName};
             in uint {LayerName};
-            uniform float {ZName};
+            in uvec4 {ColorName};
+            uniform uvec2 {AtlasSizeName};
             uniform mat4 {ProjectionMatrixName};
             uniform mat4 {ModelViewMatrixName};
             out vec2 varTexCoord;
+            out vec4 overlayColor;
             
             void main()
             {{
+                vec2 atlasFactor = vec2(1.0f / {AtlasSizeName}.x, 1.0f / {AtlasSizeName}.y);
                 vec2 pos = vec2(float({PositionName}.x) + 0.49f, float({PositionName}.y) + 0.49f);
-                varTexCoord = vec2({TexCoordName}.x, {TexCoordName}.y);
-                gl_Position = {ProjectionMatrixName} * {ModelViewMatrixName} * vec4(pos, 1.0f - {ZName} - float({LayerName}) * 0.00001f, 1.0f);
+                varTexCoord = vec2({TexCoordName}.x, {TexCoordName}.y);                
+                varTexCoord *= atlasFactor;
+                overlayColor = vec4({ColorName}.r / 255.0f, {ColorName}.g / 255.0f, {ColorName}.b / 255.0f, {ColorName}.a / 255.0f);
+                gl_Position = {ProjectionMatrixName} * {ModelViewMatrixName} * vec4(pos, 1.0f - float({LayerName}) * 0.00001f, 1.0f);
             }}
         ";
 
@@ -56,11 +61,6 @@
         public void SetColorKey(float r, float g, float b)
         {
             _shaderProgram.SetInputVector3(ColorKeyName, r, g, b);
-        }
-
-        public void SetColorOverlay(float r, float g, float b, float a)
-        {
-            _shaderProgram.SetInputVector4(ColorName, r, g, b, a);
         }
 
         public void SetAtlasSize(uint width, uint height)

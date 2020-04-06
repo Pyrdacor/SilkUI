@@ -18,5 +18,6 @@ namespace SilkUI
         public string Name;
         public int Size;
         public FontOptions Options;
+        public string[] FallbackNames;
     }
 }

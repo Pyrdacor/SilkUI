@@ -3,24 +3,20 @@ using Silk.NET.OpenGL;
 
 namespace SilkUI.Renderer.OpenGL
 {
-    using LayerValueType = UInt32;
+    using ValueType = UInt32;
 
-    internal class ValueBuffer : BufferObject<LayerValueType>
+    internal class ValueBuffer : BufferObject<ValueType>
     {
         private uint _index = 0;
-        private bool _disposed = false;
-        private LayerValueType[] _buffer = null;
-        private readonly object _bufferLock = new object();
         private int _size; // count of values
-        private readonly IndexPool _indices = new IndexPool();
-        private bool _changedSinceLastCreation = true;
+        private bool _disposed = false;
+        private readonly object _bufferLock = new object();        
         private readonly GLEnum _usageHint = GLEnum.DynamicDraw;
 
         public override int Size => _size;
-
         public override VertexAttribPointerType Type => VertexAttribPointerType.UnsignedInt;
-
         public override int Dimension => 1;
+        protected override int BytesPerValue => 4;
 
         public ValueBuffer(bool staticData)
         {
@@ -30,101 +26,43 @@ namespace SilkUI.Renderer.OpenGL
                 _usageHint = GLEnum.StaticDraw;
         }
 
-        public int Add(LayerValueType layer, int index = -1)
+        public void Add(int index, ValueType value)
         {
-            bool reused;
+            EnsureBufferSize(index * Dimension + Dimension);
 
-            if (index == -1)
-                index = _indices.AssignNextFreeIndex(out reused);
-            else
-                reused = _indices.AssignIndex(index);
+            int bufferIndex = index * Dimension;
 
-            if (_buffer == null)
-            {
-                _buffer = new LayerValueType[128];
-                _buffer[0] = layer;
-                _size = 1;
-                _changedSinceLastCreation = true;
-            }
-            else
-            {
-                if (index == _buffer.Length) // we need to recreate the buffer
-                {
-                    if (_buffer.Length < 512)
-                        Array.Resize(ref _buffer, _buffer.Length + 128);
-                    else if (_buffer.Length < 2048)
-                        Array.Resize(ref _buffer, _buffer.Length + 256);
-                    else
-                        Array.Resize(ref _buffer, _buffer.Length + 512);
+            if (bufferIndex == _size)
+                _size += Dimension;
 
-                    _changedSinceLastCreation = true;
-                }
+            _buffer[index] = value;
 
-                if (!reused)
-                    ++_size;
-
-                if (_buffer[index] != layer)
-                {
-                    _buffer[index] = layer;
-
-                    _changedSinceLastCreation = true;
-                }
-            }
-
-            return index;
-        }
-
-        public void Update(int index, LayerValueType layer)
-        {
-            if (_buffer[index] != layer)
-            {
-                _buffer[index] = layer;
-
-                _changedSinceLastCreation = true;
-            }
-        }
-
-        public void Remove(int index)
-        {
-            _indices.UnassignIndex(index);
-        }
-
-        public void ReduceSizeTo(int size)
-        {
-            _size = size;
+            _changedSinceLastCreation = true;
         }
 
         public override void Dispose()
         {
-            Dispose(true);
-        }
-
-        void Dispose(bool disposing)
-        {
             if (!_disposed)
             {
-                if (disposing)
+                State.Gl.BindBuffer(GLEnum.ArrayBuffer, 0);
+
+                if (_index != 0)
                 {
-                    State.Gl.BindBuffer(GLEnum.ArrayBuffer, 0);
+                    State.Gl.DeleteBuffer(_index);
 
-                    if (_index != 0)
+                    if (_buffer != null)
                     {
-                        State.Gl.DeleteBuffer(_index);
-
-                        if (_buffer != null)
+                        lock (_bufferLock)
                         {
-                            lock (_bufferLock)
-                            {
-                                _buffer = null;
-                            }
+                            _buffer = null;
                         }
-
-                        _size = 0;
-                        _index = 0;
                     }
 
-                    _disposed = true;
+                    _size = 0;
+                    _index = 0;
                 }
+
+                _disposed = true;
             }
         }
 
@@ -147,9 +85,9 @@ namespace SilkUI.Renderer.OpenGL
             {
                 unsafe
                 {
-                    fixed (LayerValueType* ptr = &_buffer[0])
+                    fixed (ValueType* ptr = &_buffer[0])
                     {
-                        State.Gl.BufferData(GLEnum.ArrayBuffer, (uint)(Size * sizeof(LayerValueType)),
+                        State.Gl.BufferData(GLEnum.ArrayBuffer, (uint)(Size * sizeof(ValueType)),
                             ptr, _usageHint);
                     }
                 }
@@ -172,9 +110,9 @@ namespace SilkUI.Renderer.OpenGL
             {
                 unsafe
                 {
-                    fixed (LayerValueType* ptr = &_buffer[0])
+                    fixed (ValueType* ptr = &_buffer[0])
                     {
-                        State.Gl.BufferData(GLEnum.ArrayBuffer, (uint)(Size * sizeof(LayerValueType)),
+                        State.Gl.BufferData(GLEnum.ArrayBuffer, (uint)(Size * sizeof(ValueType)),
                             ptr, _usageHint);
                     }
                 }

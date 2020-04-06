@@ -75,6 +75,7 @@ namespace SilkUI.Showcase
 
             button.X = panel.ClientRectangle.Right - 10;
             button.Y = panel.ClientRectangle.Bottom - 10;
+            (button as Button).Text = "bar";
         }
     }
 

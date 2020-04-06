@@ -7,19 +7,15 @@ namespace SilkUI.Renderer.OpenGL
     internal class ColorBuffer : BufferObject<byte>
     {
         private uint _index = 0;
-        private bool _disposed = false;
-        private byte[] _buffer = null;
-        private readonly object _bufferLock = new object();
         private int _size; // count of values
-        private readonly IndexPool _indices = new IndexPool();
-        private bool _changedSinceLastCreation = true;
+        private bool _disposed = false;
+        private readonly object _bufferLock = new object();        
         private readonly GLEnum _usageHint = GLEnum.DynamicDraw;
 
         public override int Size => _size;
-
         public override VertexAttribPointerType Type => VertexAttribPointerType.UnsignedByte;
-
         public override int Dimension => 4;
+        protected override int BytesPerValue => 1;
 
         public ColorBuffer(bool staticData)
         {
@@ -29,114 +25,46 @@ namespace SilkUI.Renderer.OpenGL
                 _usageHint = GLEnum.StaticDraw;
         }
 
-        public int Add(Color color, int index = -1)
+        public void Add(int index, Color color)
         {
-            bool reused;
+            EnsureBufferSize(index * Dimension + Dimension);
 
-            if (index == -1)
-                index = _indices.AssignNextFreeIndex(out reused);
-            else
-                reused = _indices.AssignIndex(index);
+            int bufferIndex = index * Dimension;
 
-            if (_buffer == null)
-            {
-                _buffer = new byte[128];
-                _buffer[0] = color.R;
-                _buffer[1] = color.G;
-                _buffer[2] = color.B;
-                _buffer[3] = color.A;
-                _size = 4;
-                _changedSinceLastCreation = true;
-            }
-            else
-            {
-                _buffer = EnsureBufferSize(_buffer, index * 4, out bool changed);
+            if (bufferIndex == _size)
+                _size += Dimension;
 
-                if (!reused)
-                    _size += 4;
+            _buffer[bufferIndex + 0] = color.R;
+            _buffer[bufferIndex + 1] = color.G;
+            _buffer[bufferIndex + 2] = color.B;
+            _buffer[bufferIndex + 3] = color.A;
 
-                int bufferIndex = index * 4;
-
-                if (_buffer[bufferIndex + 0] != color.R ||
-                    _buffer[bufferIndex + 1] != color.G ||
-                    _buffer[bufferIndex + 2] != color.B ||
-                    _buffer[bufferIndex + 3] != color.A)
-                {
-                    _buffer[bufferIndex + 0] = color.R;
-                    _buffer[bufferIndex + 1] = color.G;
-                    _buffer[bufferIndex + 2] = color.B;
-                    _buffer[bufferIndex + 3] = color.A;
-
-                    _changedSinceLastCreation = true;
-                }
-                else if (changed)
-                {
-                    _changedSinceLastCreation = true;
-                }
-            }
-
-            return index;
-        }
-
-        public void Update(int index, Color color)
-        {
-            int bufferIndex = index * 4;
-
-            if (_buffer[bufferIndex + 0] != color.R ||
-                _buffer[bufferIndex + 1] != color.G ||
-                _buffer[bufferIndex + 2] != color.B ||
-                _buffer[bufferIndex + 3] != color.A)
-            {
-                _buffer[bufferIndex + 0] = color.R;
-                _buffer[bufferIndex + 1] = color.G;
-                _buffer[bufferIndex + 2] = color.B;
-                _buffer[bufferIndex + 3] = color.A;
-
-                _changedSinceLastCreation = true;
-            }
-        }
-
-        public void Remove(int index)
-        {
-            _indices.UnassignIndex(index);
-        }
-
-        public void ReduceSizeTo(int size)
-        {
-            _size = size;
+            _changedSinceLastCreation = true;
         }
 
         public override void Dispose()
         {
-            Dispose(true);
-        }
-
-        void Dispose(bool disposing)
-        {
             if (!_disposed)
             {
-                if (disposing)
+                State.Gl.BindBuffer(GLEnum.ArrayBuffer, 0);
+
+                if (_index != 0)
                 {
-                    State.Gl.BindBuffer(GLEnum.ArrayBuffer, 0);
+                    State.Gl.DeleteBuffer(_index);
 
-                    if (_index != 0)
+                    if (_buffer != null)
                     {
-                        State.Gl.DeleteBuffer(_index);
-
-                        if (_buffer != null)
+                        lock (_bufferLock)
                         {
-                            lock (_bufferLock)
-                            {
-                                _buffer = null;
-                            }
+                            _buffer = null;
                         }
-
-                        _size = 0;
-                        _index = 0;
                     }
 
-                    _disposed = true;
+                    _size = 0;
+                    _index = 0;
                 }
+
+                _disposed = true;
             }
         }
 

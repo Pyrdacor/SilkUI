@@ -66,8 +66,6 @@ namespace SilkUI.Renderer.OpenGL
             Height = height;
 
             Create(format, pixelData, numMipMapLevels);
-
-            pixelData = null;
         }
 
         public Texture(int width, int height, PixelFormat format, byte[] pixelData, int numMipMapLevels = 0)

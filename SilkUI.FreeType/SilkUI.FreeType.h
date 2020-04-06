@@ -73,13 +73,6 @@ namespace SilkUI
 				FT_Done_FreeType(library);
 			}
 
-			static std::string StringToCpp(String^ str)
-			{
-				array<unsigned char>^ bytes = Encoding::UTF8->GetBytes(str);
-				pin_ptr<unsigned char> pinned = &bytes[0];
-				return std::string((char*)pinned, bytes->Length);
-			}
-
 			Font LoadFont(String^ fontFile, Int32 fontSize)
 			{
 				FontInfo fontInfo;
@@ -92,6 +85,14 @@ namespace SilkUI
 				FontInfo fontInfo;
 				FontFace firstFace = LoadFontFace(data, fontSize, 0, fontInfo);
 				return ProcessFont(firstFace, data, fontSize, fontInfo);
+			}
+
+		private:
+			static std::string StringToCpp(String^ str)
+			{
+				array<unsigned char>^ bytes = Encoding::UTF8->GetBytes(str);
+				pin_ptr<unsigned char> pinned = &bytes[0];
+				return std::string((char*)pinned, bytes->Length);
 			}
 
 			FontFace LoadFontFace(String^ fontFile, Int32 fontSize, Int32 faceIndex, FontInfo& fontInfo)

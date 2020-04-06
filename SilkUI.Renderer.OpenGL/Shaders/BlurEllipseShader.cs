@@ -70,7 +70,6 @@
             in uint {BlurRadiusName};
             in ivec2 {OriginName};
             uniform uint {ScreenHeightName};
-            uniform float {ZName};
             uniform mat4 {ProjectionMatrixName};
             uniform mat4 {ModelViewMatrixName};
             out vec4 pixelColor;
@@ -89,7 +88,7 @@
                 ellipseRoundness = {RoundnessName};
                 ellipseOrigin = {OriginName};
                 ellipseSize = {SizeName};                
-                gl_Position = {ProjectionMatrixName} * {ModelViewMatrixName} * vec4(pos, 1.0f - {ZName} - float({LayerName}) * 0.00001f, 1.0f);
+                gl_Position = {ProjectionMatrixName} * {ModelViewMatrixName} * vec4(pos, 1.0f - float({LayerName}) * 0.00001f, 1.0f);
             }}
         ";
 
