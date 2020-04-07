@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data;
 using System.Drawing;
 
 namespace SilkUI.Renderer.OpenGL
@@ -20,10 +21,10 @@ namespace SilkUI.Renderer.OpenGL
         public override int Width => _width;
         public override int Height => _height;
 
-        public void AddSprite(Point position, byte[] data, int width, int height, bool grayscale)
+        public void AddSprite(Point position, byte[] data, int width, int height, bool glyph)
         {
-            if (grayscale)
-                AddGrayscaleSprite(position, data, width, height);
+            if (glyph)
+                AddGlyphSprite(position, data, width, height);
             else
                 AddSprite(position, data, width, height);
         }
@@ -36,15 +37,15 @@ namespace SilkUI.Renderer.OpenGL
             }
         }
 
-        public void AddGrayscaleSprite(Point position, byte[] data, int width, int height)
+        public void AddGlyphSprite(Point position, byte[] data, int width, int height)
         {
             byte[] rgbaData = new byte[width * height * 4];
 
             for (int i = 0; i < width * height; ++i)
             {
-                rgbaData[i * 4 + 0] = data[i];
-                rgbaData[i * 4 + 1] = data[i];
-                rgbaData[i * 4 + 2] = data[i];
+                rgbaData[i * 4 + 0] = 255;
+                rgbaData[i * 4 + 1] = 255;
+                rgbaData[i * 4 + 2] = 255;
                 rgbaData[i * 4 + 3] = data[i];
             }
 
@@ -74,12 +75,14 @@ namespace SilkUI.Renderer.OpenGL
 
         public void Finish(int numMipMapLevels, PixelFormat pixelFormat = PixelFormat.BGRA8)
         {
-            if (_data != null)
-            {
-                Create(pixelFormat, _data, numMipMapLevels);
+            Update(numMipMapLevels, pixelFormat);
+            _data = null;
+        }
 
-                _data = null;
-            }
+        public void Update(int numMipMapLevels, PixelFormat pixelFormat = PixelFormat.BGRA8)
+        {
+            if (_data != null)
+                Create(pixelFormat, _data, numMipMapLevels);
         }
 
         public void Resize(int width, int height)

@@ -83,10 +83,8 @@ namespace SilkUI
             {
                 var state = ObservableState.Empty;
 
-                if (observable is IObservableStatusProvider)
-                {
-                    var observableWithStatus = observable as IObservableStatusProvider;
-                    
+                if (observable is IObservableStatusProvider observableWithStatus)
+                {                   
                     if (observableWithStatus.Errored)
                     {
                         if (allowErrors)

@@ -36,7 +36,7 @@ namespace SilkUI.Renderer.OpenGL
             if (shader == null)
                 throw new ArgumentNullException("Shader must not be null.");
 
-            if (roundness != 0 && roundness != 2 && roundness != 4 && roundness != 8 && roundness != 16)
+            if (roundness != 0u && roundness != 2u && roundness != 4u && roundness != 8u && roundness != 16u)
                 throw new ArgumentException("The given roundness must be one of: 0, 2, 4, 8, 16.");
 
             if (texture != null)
@@ -50,11 +50,11 @@ namespace SilkUI.Renderer.OpenGL
                 if (texCoords.Length != vertexPositions.Length)
                     throw new ArgumentException("Tex coord amount must match the amount of vertices.");
 
-                if (blurRadius != 0)
+                if (blurRadius != 0u)
                     throw new ArgumentException("Blur is not available for textured sprites.");
             }
 
-            if (blurRadius != 0 && !transparency)
+            if (blurRadius != 0u && !transparency)
                 throw new ArgumentException("If blur is active, transparency must be set as well.");
 
             VertexPositions = vertexPositions;
@@ -78,6 +78,9 @@ namespace SilkUI.Renderer.OpenGL
         {
             if (other == null)
                 return 1;
+
+            if (Z == other.Z)
+                return BufferIndex.CompareTo(other.BufferIndex);
 
             // This is equal to the greater check.
             return other.Z.CompareTo(Z);

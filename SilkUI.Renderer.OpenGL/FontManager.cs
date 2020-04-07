@@ -4,13 +4,13 @@ using System.Linq;
 
 namespace SilkUI
 {
-    public class FontManager
+    internal class FontManager
     {
         private static readonly string FontPath = @"fonts";
         private static FontManager _instance;
         private readonly FreeType.FreeType ft = new FreeType.FreeType();
-        private readonly Dictionary<string, Dictionary<int, Dictionary<FontOptions, FontGlyphs>>> cachedFonts =
-            new Dictionary<string, Dictionary<int, Dictionary<FontOptions, FontGlyphs>>>();
+        private readonly Dictionary<string, Dictionary<int, Dictionary<FontStyle, FontGlyphs>>> cachedFonts =
+            new Dictionary<string, Dictionary<int, Dictionary<FontStyle, FontGlyphs>>>();
 
         private FontManager()
         {
@@ -37,7 +37,7 @@ namespace SilkUI
             {
                 Name = font.FallbackNames[0],
                 Size = font.Size,
-                Options = font.Options,
+                Style = font.Style,
                 FallbackNames = font.FallbackNames.Skip(1).ToArray()
             };
         }
@@ -58,13 +58,13 @@ namespace SilkUI
         /// <param name="font">Font to retrieve glyphs for</param>
         public FontGlyphs GetFont(string fontPath, Font font)
         {
-            var fontOptions = font.Options & (FontOptions.Bold | FontOptions.Italic); // only those are stored in the font itself
+            var fontStyle = font.Style & (FontStyle.Bold | FontStyle.Italic); // only those are stored in the font itself
 
             if (cachedFonts.ContainsKey(font.Name))
             {
                 if (cachedFonts[font.Name].ContainsKey(font.Size))
                 {
-                    if (!cachedFonts[font.Name][font.Size].ContainsKey(fontOptions))
+                    if (!cachedFonts[font.Name][font.Size].ContainsKey(fontStyle))
                     {
                         // If the style is not present, it is not available at all.
                         // Try next fallback font or return null.
@@ -73,7 +73,7 @@ namespace SilkUI
                     }
                     else
                     {
-                        return cachedFonts[font.Name][font.Size][fontOptions];
+                        return cachedFonts[font.Name][font.Size][fontStyle];
                     }
                 }
                 else
@@ -95,25 +95,25 @@ namespace SilkUI
                         return GetFont(fontPath, nextFont.Value);
                     }
 
-                    var glyphs = new Dictionary<FontOptions, FontGlyphs>();
+                    var glyphs = new Dictionary<FontStyle, FontGlyphs>();
 
                     foreach (var face in fontData.Faces)
                     {
                         var fontGlyphs = new FontGlyphs(face.Glyphs);
-                        var options = FontOptions.None;
+                        var options = FontStyle.None;
 
                         if (face.Bold)
-                            options |= FontOptions.Bold;
+                            options |= FontStyle.Bold;
                         if (face.Italic)
-                            options |= FontOptions.Italic;
+                            options |= FontStyle.Italic;
 
                         glyphs.Add(options, fontGlyphs);
                     }
 
                     cachedFonts[font.Name].Add(font.Size, glyphs);
 
-                    if (glyphs.ContainsKey(fontOptions))
-                        return glyphs[fontOptions];
+                    if (glyphs.ContainsKey(fontStyle))
+                        return glyphs[fontStyle];
                     else
                     {
                         var nextFont = NextFont(font);
@@ -123,7 +123,7 @@ namespace SilkUI
             }
             else
             {
-                cachedFonts.Add(font.Name, new Dictionary<int, Dictionary<FontOptions, FontGlyphs>>());
+                cachedFonts.Add(font.Name, new Dictionary<int, Dictionary<FontStyle, FontGlyphs>>());
                 return GetFont(font);
             }
         }

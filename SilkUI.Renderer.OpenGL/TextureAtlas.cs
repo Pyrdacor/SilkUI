@@ -6,23 +6,38 @@ namespace SilkUI.Renderer.OpenGL
 {
     internal class TextureAtlas
     {
-        public MutableTexture AtlasTexture { get; } = new MutableTexture(0, 0);
-        private readonly Dictionary<ImageHandle, Point> _images = new Dictionary<ImageHandle, Point>();
+        public Texture AtlasTexture { get; }
+        private readonly Dictionary<uint, Point> _atlasPositions = new Dictionary<uint, Point>();
 
-        public Point AddTexture(ImageHandle imageHandle)
+        internal TextureAtlas(Texture texture, Dictionary<uint, Point> imagePositions)
         {
-            if (!_images.ContainsKey(imageHandle))
-            {
-                // TODO: place the image so the atlas size uses minimal space
-                var position = new Point(AtlasTexture.Width, 0);
-                AtlasTexture.Resize(AtlasTexture.Width + imageHandle.Width, Math.Max(AtlasTexture.Height, imageHandle.Height));
-                AtlasTexture.AddSprite(position, imageHandle.Data, imageHandle.Width, imageHandle.Height, imageHandle.BytesPerPixel == 1);
-                return position;
-            }
-            else
-            {
-                return _images[imageHandle];
-            }
+            AtlasTexture = texture;
+            _atlasPositions = imagePositions;
+        }
+
+        public static TextureAtlas Create(params FreeType.Glyph[] glyphs)
+        {
+            var builder = new TextureAtlasBuilder();
+
+            foreach (var glyph in glyphs)
+                builder.AddImage(new ImageHandle(glyph));
+
+            return builder.Create();
+        }
+
+        public static TextureAtlas Create(Dictionary<uint, Bitmap> images)
+        {
+            var builder = new TextureAtlasBuilder();
+
+            foreach (var image in images)
+                builder.AddImage(new ImageHandle(image.Key, image.Value));
+
+            return builder.Create();
+        }
+
+        public Point GetAtlasPosition(uint key)
+        {
+            return _atlasPositions[key];
         }
     }
 }

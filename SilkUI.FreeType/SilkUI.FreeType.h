@@ -206,7 +206,7 @@ namespace SilkUI
 						glyph.Height = face->glyph->bitmap.rows;
 						glyph.BearingX = face->glyph->bitmap_left;
 						glyph.BearingY = face->glyph->bitmap_top;
-						glyph.Advance = face->glyph->advance.x;
+						glyph.Advance = face->glyph->advance.x / 64; // advance is given in 1/64th pixel
 						glyph.CharCode = charCode;
 						glyph.ImageData = gcnew array<Byte>(glyph.Width * glyph.Height); // 8 bit (1 byte) per color
 

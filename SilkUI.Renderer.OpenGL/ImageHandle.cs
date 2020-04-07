@@ -10,17 +10,20 @@ namespace SilkUI.Renderer.OpenGL
     /// </summary>
     internal class ImageHandle : IEquatable<ImageHandle>
     {
+        public uint Index { get; }
         public Bitmap _image;
         public FreeType.Glyph? _glyph;
 
-        internal ImageHandle(Bitmap image)
+        internal ImageHandle(uint index, Bitmap image)
         {
             _image = image;
+            Index = index;
         }
 
         internal ImageHandle(FreeType.Glyph glyph)
         {
             _glyph = glyph;
+            Index = glyph.CharCode;
         }
 
         public int Width
@@ -91,7 +94,7 @@ namespace SilkUI.Renderer.OpenGL
             if (_image != null)
                 return _image == other._image;
             if (_glyph != null)
-                return other._glyph != null && _glyph.Value.ImageData == other._glyph.Value.ImageData;
+                return other._glyph != null && _glyph.Value.CharCode == other._glyph.Value.CharCode;
 
             return other._image == null && other._glyph == null;
         }
@@ -101,7 +104,7 @@ namespace SilkUI.Renderer.OpenGL
             if (Object.ReferenceEquals(obj, null))
                 return false;
 
-            return this.Equals((ImageHandle)obj);
+            return Equals((ImageHandle)obj);
         }
 
         public override int GetHashCode()
@@ -111,7 +114,7 @@ namespace SilkUI.Renderer.OpenGL
             if (_image != null)
                 hash = hash * 23 + _image.GetHashCode();
             if (_glyph != null)
-                hash = hash * 23 + _glyph.Value.GetHashCode();
+                hash = hash * 23 + _glyph.Value.CharCode.GetHashCode();
 
             return hash;
         }

@@ -87,7 +87,7 @@ namespace SilkUI.Controls
                     Name = "arial.ttf",
                     Size = 18,
                     FallbackNames = new string[] { },
-                    Options = FontOptions.None
+                    Style = FontStyle.None
                 }, Color.Red);
         }
 

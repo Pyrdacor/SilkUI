@@ -73,8 +73,8 @@ namespace SilkUI.Showcase
 
             var button = this.Children["foo"];
 
-            button.X = panel.ClientRectangle.Right - 10;
-            button.Y = panel.ClientRectangle.Bottom - 10;
+            button.X = 4;
+            button.Y = 4;
             (button as Button).Text = "bar";
         }
     }

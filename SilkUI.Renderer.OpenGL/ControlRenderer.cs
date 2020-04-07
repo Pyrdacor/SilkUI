@@ -15,8 +15,6 @@ namespace SilkUI.Renderer.OpenGL
         private readonly IndexPool _renderNodeIndexPool = new IndexPool();
         private readonly Context _context;
         private readonly RenderDimensionReference _renderDimensionReference;
-        private readonly TextureAtlas _textureAtlas = new TextureAtlas();
-        private readonly TextureAtlas _fontTextureAtlas = new TextureAtlas();
         private uint _displayLayer = 0;
         private readonly DrawCommandBatch _drawCommandBatch = new DrawCommandBatch();
         private int _replaceRenderObjectIndex = -1;
@@ -200,10 +198,13 @@ namespace SilkUI.Renderer.OpenGL
             if (image.Width == 0 || image.Height == 0 || (colorOverlay.HasValue && colorOverlay.Value.A == 0))
                 return DenyDrawing();
 
-            var textureAtlasOffset = _textureAtlas.AddTexture(new ImageHandle(image));
+            // TODO: we need a texture or texture atlas and cache it!
+            Texture texture = null;
+            Point textureOffset = Point.Empty;
+            bool transparency = false;
 
             return AddDrawCommands(new DrawCommandSprite(x, y, image.Width, image.Height, _displayLayer++,
-                colorOverlay ?? Color.White, _textureAtlas.AtlasTexture, textureAtlasOffset));
+                colorOverlay ?? Color.White, texture, textureOffset, transparency));
         }
 
         public int FillTriangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color)
@@ -270,7 +271,8 @@ namespace SilkUI.Renderer.OpenGL
                 throw exception;
             }
 
-            List<DrawCommand> drawCommands = new List<DrawCommand>(text.Length);
+            var drawCommands = new List<DrawCommand>(text.Length);
+            y += font.Size; // We need origin Y (baseline)
 
             foreach (char ch in text)
             {
@@ -284,7 +286,6 @@ namespace SilkUI.Renderer.OpenGL
                 return DenyDrawing(); // Nothing was drawn.
 
             ++_displayLayer;
-            _fontTextureAtlas.AtlasTexture.Finish(0); // TODO: this has to change
 
             return AddDrawCommands(drawCommands.ToArray());
         }
@@ -306,7 +307,7 @@ namespace SilkUI.Renderer.OpenGL
 
             var glyph = glyphs.Glyphs[code];
 
-            if (code <= 32) // Don't draw control characters and spaces but advance.
+            if (code <= 32) // Don't draw control characters and spaces, but advance.
             {
                 if (code == '\t' && glyphs.Glyphs.ContainsKey(' ')) // TODO: make tab size configurable or a constant
                     x += 4 * glyphs.Glyphs[' '].Advance;
@@ -316,11 +317,10 @@ namespace SilkUI.Renderer.OpenGL
                 return null;
             }
             
-            var textureAtlasOffset = _fontTextureAtlas.AddTexture(new ImageHandle(glyph));
-            var glyphCommand = new DrawCommandSprite(x + glyph.BearingX, y + glyph.BearingY, glyph.Width, glyph.Height,
-                _displayLayer, color, _fontTextureAtlas.AtlasTexture, textureAtlasOffset);
+            var glyphCommand = new DrawCommandSprite(x + glyph.BearingX, y - glyph.BearingY, glyph.Width, glyph.Height,
+                _displayLayer, color, glyph.TextureAtlas.AtlasTexture, glyph.TextureAtlasOffset, true);
 
-            x += glyphs.Glyphs[code].Advance;
+            x += glyph.Advance;
 
             return glyphCommand;
         }

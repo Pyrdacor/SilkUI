@@ -213,7 +213,7 @@ namespace SilkUI.Renderer.OpenGL
                     vao.DepthWrite = false;
                     vao.Blending = true;
 
-                    if (command.BlurRadius != 0)
+                    if (command.BlurRadius != 0u)
                     {
                         // Blurred
                         var blurRadiusBuffer = vao.EnsureValueBuffer(ShaderBase.BlurRadiusName, true);

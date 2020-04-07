@@ -129,10 +129,8 @@ namespace SilkUI
 
             foreach (var control in Children)
             {
-                if (control is Component)
+                if (control is Component component)
                 {
-                    var component = control as Component;
-
                     foreach (var subControl in component.FindMatchingControls(component, path, selector))
                         yield return subControl;
                 }

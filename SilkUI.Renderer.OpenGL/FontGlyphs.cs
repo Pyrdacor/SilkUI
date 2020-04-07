@@ -1,15 +1,42 @@
 ﻿using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
+using SilkUI.Renderer.OpenGL;
 
 namespace SilkUI
 {
-    public class FontGlyphs
+    internal struct FontGlyph
     {
-        public IReadOnlyDictionary<uint, FreeType.Glyph> Glyphs { get; }
+        public TextureAtlas TextureAtlas;
+        public Point TextureAtlasOffset;
+        public int Width;
+        public int Height;
+        public int BearingX;
+        public int BearingY;
+        public int Advance;
+    }
 
-        internal FontGlyphs(FreeType.Glyph[] glyphs)
+    internal class FontGlyphs
+    {
+        public IReadOnlyDictionary<uint, FontGlyph> Glyphs { get; }
+
+        internal FontGlyphs(params FreeType.Glyph[] glyphs)
         {
-            Glyphs = glyphs.ToDictionary(g => g.CharCode, g => g);
+            var fontAtlas = TextureAtlas.Create(glyphs);
+            Glyphs = glyphs.ToDictionary
+            (
+                g => g.CharCode,
+                g => new FontGlyph()
+                {
+                    TextureAtlas = fontAtlas,
+                    TextureAtlasOffset = fontAtlas.GetAtlasPosition(g.CharCode),
+                    Width = g.Width,
+                    Height = g.Height,
+                    BearingX = g.BearingX,
+                    BearingY = g.BearingY,
+                    Advance = g.Advance
+                }
+            );
         }
     }
 }

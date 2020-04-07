@@ -3,7 +3,7 @@
 namespace SilkUI
 {
     [Flags]
-    public enum FontOptions
+    public enum FontStyle
     {
         None = 0x00,
         Bold = 0x01,
@@ -17,7 +17,7 @@ namespace SilkUI
     {
         public string Name;
         public int Size;
-        public FontOptions Options;
+        public FontStyle Style;
         public string[] FallbackNames;
     }
 }

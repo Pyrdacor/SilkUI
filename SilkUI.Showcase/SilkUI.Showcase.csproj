@@ -1,10 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <None Remove="fonts\arial.ttf" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\SilkUI.Core\SilkUI.Core.csproj" />
     <ProjectReference Include="..\SilkUI.Renderer.OpenGL\SilkUI.Renderer.OpenGL.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="glfw" Version="3.3.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="fonts\arial.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <PropertyGroup>
     <OutputType>Exe</OutputType>

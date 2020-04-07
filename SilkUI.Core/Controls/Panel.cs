@@ -48,6 +48,8 @@ namespace SilkUI.Controls
 
         protected override void OnRender(RenderEventArgs args)
         {
+            // TODO: If a style is only set while hovering etc
+            //       it will remain when the state is lost (e.g. border stays after hovering).
             var renderer = args.Renderer;
             var rectangle = AbsoluteRectangle;
             var borderSize = Style.Get<AllDirectionStyleValue<int>>("border.size");
