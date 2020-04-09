@@ -48,12 +48,12 @@ namespace SilkUI
             if (obj == null)
                 return false;
 
-            return this.Equals((ColorValue)obj);
+            return Equals((ColorValue)obj);
         }
 
         public override int GetHashCode()
         {
-            return _color.GetHashCode();
+            return HashCode.Combine(_color);
         }
 
         public static bool operator ==(ColorValue lhs, ColorValue rhs)

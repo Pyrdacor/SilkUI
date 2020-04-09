@@ -43,7 +43,9 @@ namespace SilkUI.Showcase
                 ShadowColor = Color.Lime,
                 ShadowXOffset = 2,
                 ShadowYOffset = 2,
-                ShadowVisible = true
+                ShadowVisible = true,
+                Width = 300,
+                Height = Dimension.Type.Fill
             });
             Add(Selector.ForType(typeof(Panel)).WhenHovered(), new Style()
             {
@@ -51,6 +53,10 @@ namespace SilkUI.Showcase
                 BorderSize = 12,
                 BorderColor = "orange",
                 BorderLineStyle = BorderLineStyle.Inset
+            });
+            Add(Selector.ForType(typeof(MyComponent)), new Style()
+            {
+                BackgroundColor = Color.Purple
             });
         }
     }
@@ -73,9 +79,15 @@ namespace SilkUI.Showcase
 
             var button = this.Children["foo"];
 
-            button.X = 4;
-            button.Y = 4;
-            (button as Button).Text = "bar";
+            button.X = 20;
+            button.Y = 20;
+            (button as Button).Text = "FOOZ\tB ba";
+
+            // TODO: The root component should always fill the whole window/view!
+            Width = 1000;
+            Height = 700;
+
+            //this.FitToContent();
         }
     }
 

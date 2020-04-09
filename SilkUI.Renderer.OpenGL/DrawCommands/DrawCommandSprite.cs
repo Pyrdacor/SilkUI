@@ -5,7 +5,8 @@ namespace SilkUI.Renderer.OpenGL
 {
     internal class DrawCommandSprite : DrawCommand
     {
-        public DrawCommandSprite(int x, int y, int width, int height, uint z, Color colorOverlay, Texture texture, Point texCoords, bool transparency)
+        public DrawCommandSprite(int x, int y, int width, int height, uint z, Color colorOverlay,
+            Texture texture, Point texCoords, bool transparency, Rectangle? clipRect)
             : base(new Point[4]
                 {
                     new Point(x, y),
@@ -20,7 +21,7 @@ namespace SilkUI.Renderer.OpenGL
                     new Point(texCoords.X + width, texCoords.Y),
                     new Point(texCoords.X + width, texCoords.Y + height),
                     new Point(texCoords.X, texCoords.Y + height)
-                })
+                }, clipRect)
         {
             
         }

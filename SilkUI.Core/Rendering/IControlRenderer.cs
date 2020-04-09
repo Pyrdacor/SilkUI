@@ -24,6 +24,8 @@ namespace SilkUI
         int FillPolygon(Color color, params Point[] points);
         int DrawShadow(int x, int y, int width, int height, Color color, int blurRadius, bool inset);
         int DrawText(int x, int y, string text, Font font, Color color);
+        int DrawText(Rectangle bounds, string text, Font font, Color color, HorizontalAlignment horizontalAlignment,
+            VertictalAlignment vertictalAlignment, bool wordWrap, TextOverflow textOverflow);
     }
 
     public interface IControlRendererFactory

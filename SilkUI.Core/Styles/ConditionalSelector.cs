@@ -40,12 +40,7 @@ namespace SilkUI
 
         protected override int CalculateHashCode()
         {
-            int hash = 17;
-
-            hash = hash * 23 + Priority.GetHashCode();
-            hash = hash * 23 + _condition.GetHashCode();
-
-            return hash;
+            return HashCode.Combine(Priority, _condition);
         }
     }
 }

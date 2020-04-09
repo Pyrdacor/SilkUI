@@ -1,3 +1,6 @@
+using System.Drawing;
+using System.Runtime.InteropServices.ComTypes;
+
 namespace SilkUI.Controls
 {
     // The panel is the base class for all
@@ -14,12 +17,14 @@ namespace SilkUI.Controls
         private int? _backgroundRef;
         private int?[] _borderRefs = new int?[4];
 
+        public static readonly int DefaultWidth = 100;
+        public static readonly int DefaultHeight = 100;
+
         public Panel(string id = null)
             : base(id)
         {
-            // for now set some base dimensions
-            Width = 100;
-            Height = 100;
+            Width = DefaultWidth;
+            Height = DefaultHeight;
         }
 
         internal override void DestroyView()
@@ -56,7 +61,7 @@ namespace SilkUI.Controls
             var borderColor = Style.Get<AllDirectionStyleValue<ColorValue>>("border.color");
             var borderStyle = Style.Get<AllDirectionStyleValue<BorderLineStyle>>("border.linestyle", BorderLineStyle.None);
             var backgroundColor = Style.Get<ColorValue>("background.color", "gray");
-            var shadowVisible = Style.Get<bool>("shadow.visible", false);
+            var shadowVisible = Style.Get("shadow.visible", false);
 
             if (shadowVisible)
             {
@@ -65,7 +70,7 @@ namespace SilkUI.Controls
                 var shadowOffsetY = Style.Get<int>("shadow.yoffset");
                 var shadowBlurRadius = Style.Get<int>("shadow.blurradius");
                 var shadowSpreadRadius = Style.Get<int>("shadow.spreadradius");
-                var shadowInset = Style.Get<bool>("shadow.inset", false);
+                var shadowInset = Style.Get("shadow.inset", false);
 
                 ControlPainter.DrawShadow
                 (
@@ -76,14 +81,14 @@ namespace SilkUI.Controls
 
             _backgroundRef = args.Renderer.FillRectangle(this, _backgroundRef, X, Y, Width, Height, backgroundColor);
 
-            ControlPainter.DrawBorder(this, ref _borderRefs[0], renderer, StlyeDirection.Top, borderStyle.Top,
+            ControlPainter.DrawBorder(this, ref _borderRefs[0], renderer, StyleDirection.Top, borderStyle.Top,
                 borderColor.Top, borderSize.Top, rectangle);
-            ControlPainter.DrawBorder(this, ref _borderRefs[1], renderer, StlyeDirection.Right, borderStyle.Right,
+            ControlPainter.DrawBorder(this, ref _borderRefs[1], renderer, StyleDirection.Right, borderStyle.Right,
                 borderColor.Right, borderSize.Right, rectangle);
-            ControlPainter.DrawBorder(this, ref _borderRefs[2], renderer, StlyeDirection.Bottom, borderStyle.Bottom,
+            ControlPainter.DrawBorder(this, ref _borderRefs[2], renderer, StyleDirection.Bottom, borderStyle.Bottom,
                 borderColor.Bottom, borderSize.Bottom, rectangle);
-            ControlPainter.DrawBorder(this, ref _borderRefs[3], renderer, StlyeDirection.Left, borderStyle.Left,
-                borderColor.Left, borderSize.Left, rectangle);            
+            ControlPainter.DrawBorder(this, ref _borderRefs[3], renderer, StyleDirection.Left, borderStyle.Left,
+                borderColor.Left, borderSize.Left, rectangle);
 
             // render child controls
             base.OnRender(args);

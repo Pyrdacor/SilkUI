@@ -6,6 +6,8 @@ namespace SilkUI
 {
     public abstract class Control
     {
+        public const int MinWidth = 4;
+        public const int MinHeight = 4;
         private Component _parent;
         protected bool NeedsRedraw { get; private set; } = true;
         internal virtual ControlRenderer ControlRenderer => Parent?.ControlRenderer;
@@ -43,7 +45,7 @@ namespace SilkUI
 
         #region Control Properties
 
-        private Dictionary<string, IControlProperty> _controlProperties = new Dictionary<string, IControlProperty>();        
+        private readonly Dictionary<string, IControlProperty> _controlProperties = new Dictionary<string, IControlProperty>();        
 
         #region State
 
@@ -83,31 +85,35 @@ namespace SilkUI
 
         #region Metrics
 
-        private IntProperty _width = new IntProperty(nameof(Width), 0);
-        private IntProperty _height = new IntProperty(nameof(Height), 0);
-        private IntProperty _x = new IntProperty(nameof(X), 0);
-        private IntProperty _y = new IntProperty(nameof(Y), 0);
+        private readonly IntProperty _width = new IntProperty(nameof(Width), 0);
+        private readonly IntProperty _height = new IntProperty(nameof(Height), 0);
+        private readonly IntProperty _x = new IntProperty(nameof(X), 0);
+        private readonly IntProperty _y = new IntProperty(nameof(Y), 0);
 
         public int X
         {
             get => _x.Value ?? 0;
             set => _x.Value = value;
         }
+
         public int Y
         {
             get => _y.Value ?? 0;
             set => _y.Value = value;
         }
+
         public int Width
         {
             get => _width.Value ?? 0;
-            set => _width.Value = value;
+            set => _width.Value = Math.Max(MinWidth, value);
         }
+
         public int Height
         {
             get => _height.Value ?? 0;
-            set => _height.Value = value;
+            set => _height.Value = Math.Max(MinHeight, value);
         }
+
         /// <summary>
         /// Location relative to the parent control.
         /// </summary>
@@ -127,6 +133,7 @@ namespace SilkUI
                     OnPositionChanged();
             }
         }
+
         /// <summary>
         /// Absolute location which is relative to the main view.
         /// </summary>
@@ -134,6 +141,7 @@ namespace SilkUI
         {
             get => Parent == null ? Location : Parent.AbsoluteLocation.Add(Location);
         }
+
         public Size Size
         {
             get => new Size(Width, Height);
@@ -150,6 +158,7 @@ namespace SilkUI
                     OnSizeChanged();
             }
         }
+
         /// <summary>
         /// Rectangular area relative to the parent control.
         /// </summary>
@@ -162,6 +171,7 @@ namespace SilkUI
                 Size = value.Size;
             }
         }
+
         /// <summary>
         /// Absolute rectangle which is positioned relative to the main view.
         /// </summary>
@@ -170,13 +180,167 @@ namespace SilkUI
             get => new Rectangle(AbsoluteLocation, Size);
         }
 
+        /// <summary>
+        /// Absolute content rectangle without the border and with padding.
+        /// </summary>
+        public Rectangle AbsoluteContentRectangle
+        {
+            get
+            {
+                var absoluteRectangle = AbsoluteRectangle;
+                var padding = Style.Get<AllDirectionStyleValue<int>>("padding", 0);
+
+                int leftBorderSize = GetBorderSize(StyleDirection.Left);
+                int topBorderSize = GetBorderSize(StyleDirection.Top);
+                absoluteRectangle.Offset(padding.Left - leftBorderSize, padding .Top - topBorderSize);
+                absoluteRectangle.Width += leftBorderSize + GetBorderSize(StyleDirection.Right) - padding.Left - padding.Right;
+                absoluteRectangle.Height += topBorderSize + GetBorderSize(StyleDirection.Bottom) - padding.Top - padding.Bottom;
+
+                return absoluteRectangle;
+            }
+        }
+
+        /// <summary>
+        /// Content rectangle without the border and with padding relative to the parent control.
+        /// </summary>
+        public Rectangle ContentRectangle
+        {
+            get
+            {
+                var contentRectangle = ClientRectangle;
+                var padding = Style.Get<AllDirectionStyleValue<int>>("padding", 0);
+
+                int leftBorderSize = GetBorderSize(StyleDirection.Left);
+                int topBorderSize = GetBorderSize(StyleDirection.Top);
+                contentRectangle.Offset(padding.Left - leftBorderSize, padding.Top - topBorderSize);
+                contentRectangle.Width += leftBorderSize + GetBorderSize(StyleDirection.Right) - padding.Left - padding.Right;
+                contentRectangle.Height += topBorderSize + GetBorderSize(StyleDirection.Bottom) - padding.Top - padding.Bottom;
+
+                return contentRectangle;
+            }
+        }
+
+        /// <summary>
+        /// Width of the content in pixels.
+        /// </summary>
+        public int ContentWidth
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Height of the content in pixels.
+        /// </summary>
+        public int ContentHeight
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Updates the layout of this control and
+        /// of all descendant controls if 'deep' is true.
+        /// </summary>
+        /// <param name="up"></param>
+        protected void UpdateLayout(bool deep)
+        {
+            var widthDimension = Style.Get<Dimension>("width");
+            var heightDimension = Style.Get<Dimension>("height");
+
+            int width = (int)widthDimension.GetValue(Parent != null ? (uint)Parent.Width : 0u);
+            int height = (int)heightDimension.GetValue(Parent != null ? (uint)Parent.Height : 0u);
+
+            if (width != 0)
+                Width = width;
+            if (height != 0)
+                Height = height;
+
+            Rectangle? parentContentRect = Parent == null ? (Rectangle?)null : Parent.ContentRectangle;
+
+            // TODO: add more and better placement/layout options through styles (flex, grid, etc)
+            // TODO: should fill still use margins?
+            if (widthDimension.DimensionType == Dimension.Type.Fill)
+                X = parentContentRect.HasValue ? parentContentRect.Value.X : 0;
+            if (heightDimension.DimensionType == Dimension.Type.Fill)
+                Y = parentContentRect.HasValue ? parentContentRect.Value.Y : 0;
+
+            if (deep)
+                UpdateChildrenLayout(true, out _, out _);
+        }
+
+        private void UpdateChildrenLayout(bool deep, out int minX, out int minY)
+        {
+            minX = Width;
+            minY = Height;
+            int maxX = 0;
+            int maxY = 0;
+
+            foreach (var child in InternalChildren)
+            {
+                child.UpdateLayout(deep);
+
+                var childRect = child.ClientRectangle;
+
+                minX = Math.Min(minX, childRect.Left);
+                minY = Math.Min(minY, childRect.Top);
+                maxX = Math.Max(maxX, childRect.Right);
+                maxY = Math.Max(maxY, childRect.Bottom);
+            }
+
+            ContentWidth = Math.Max(0, maxX - minX);
+            ContentHeight = Math.Max(0, maxY - minY);
+        }
+
+        public void FitToContent()
+        {
+            UpdateChildrenLayout(true, out int minX, out int minY);
+            Width = ContentWidth + Math.Max(0, Width - AbsoluteContentRectangle.Width);
+            Height = ContentHeight + Math.Max(0, Height - AbsoluteContentRectangle.Height);
+
+            foreach (var child in InternalChildren)
+            {
+                child.X -= minX;
+                child.Y -= minY;
+                child.UpdateLayout(false);
+            }
+        }
+
+        public int GetBorderSize(StyleDirection direction)
+        {
+            var borderStyles = Style.Get<AllDirectionStyleValue<BorderLineStyle>>("border.linestyle", BorderLineStyle.None);
+            var borderSizes = Style.Get<AllDirectionStyleValue<int>>("border.size", 0);
+
+            return direction switch
+            {
+                StyleDirection.Top => GetBorderSize(borderStyles.Top, borderSizes.Top),
+                StyleDirection.Right => GetBorderSize(borderStyles.Right, borderSizes.Right),
+                StyleDirection.Bottom => GetBorderSize(borderStyles.Bottom, borderSizes.Bottom),
+                StyleDirection.Left => GetBorderSize(borderStyles.Left, borderSizes.Left),
+                _ => throw new ArgumentException($"Invalid style direction `{direction}`.")
+            };
+        }
+
+        public int GetBorderSize(BorderLineStyle borderStyle, int borderSize)
+        {
+            return borderStyle switch
+            {
+                BorderLineStyle.None => 0,
+                _ => borderSize
+            };
+        }
+
         protected void OnPositionChanged()
         {
+            UpdateLayout(true);
+
             PositionChanged?.Invoke(this, EventArgs.Empty);
         }
 
         protected void OnSizeChanged()
         {
+            UpdateLayout(true);
+
             SizeChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -214,6 +378,7 @@ namespace SilkUI
         {
             ParentChanged?.Invoke(this, new PropagatedEventArgs());
             CheckStyleChanges();
+            UpdateLayout(true);
         }
 
         internal virtual void OnVisibilityChanged()
@@ -387,7 +552,9 @@ namespace SilkUI
 
         internal virtual void InitView()
         {
-
+            // Note: For all children InitView is called as well
+            // after this. So only update the control's layout!
+            UpdateLayout(false);
         }
 
         internal virtual void DestroyView()

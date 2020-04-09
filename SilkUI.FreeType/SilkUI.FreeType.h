@@ -39,6 +39,7 @@ namespace SilkUI
 			Int32 FaceIndex;
 			Boolean Bold;
 			Boolean Italic;
+			Int32 LineHeight;
 			array<Glyph>^ Glyphs;
 		};
 
@@ -53,7 +54,6 @@ namespace SilkUI
 		{
 			std::string Family;
 			int NumFaces;
-			int LineHeight;
 		};
 
 		private class FreeTypeInterface
@@ -181,12 +181,9 @@ namespace SilkUI
 					// Only fill font info when first face is processed.
 					fontInfo.Family = face->family_name;
 					fontInfo.NumFaces = face->num_faces;
-					fontInfo.LineHeight = face->max_advance_height;
 
 					if (fontInfo.NumFaces < 1)
 						fontInfo.NumFaces = 1;
-					if (fontInfo.LineHeight < 1)
-						fontInfo.LineHeight = fontSize;
 				}
 
 				charCode = FT_Get_First_Char(face, &glyhpIndex);
@@ -206,7 +203,7 @@ namespace SilkUI
 						glyph.Height = face->glyph->bitmap.rows;
 						glyph.BearingX = face->glyph->bitmap_left;
 						glyph.BearingY = face->glyph->bitmap_top;
-						glyph.Advance = face->glyph->advance.x / 64; // advance is given in 1/64th pixel
+						glyph.Advance = face->glyph->advance.x / 64; // Advance is given in 1/64th pixel
 						glyph.CharCode = charCode;
 						glyph.ImageData = gcnew array<Byte>(glyph.Width * glyph.Height); // 8 bit (1 byte) per color
 
@@ -222,6 +219,7 @@ namespace SilkUI
 				fontFace.FaceIndex = face->face_index;
 				fontFace.Bold = face->style_flags & FT_STYLE_FLAG_BOLD;
 				fontFace.Italic = face->style_flags & FT_STYLE_FLAG_ITALIC;
+				fontFace.LineHeight = face->size->metrics.height / 64; // Line height is given in 1/64th pixel
 				fontFace.Glyphs = glyphs->ToArray();
 
 				return fontFace;

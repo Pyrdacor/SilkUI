@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace SilkUI
 {
-    public enum StlyeDirection
+    public enum StyleDirection
     {
         Top,
         Right,
@@ -35,19 +35,12 @@ namespace SilkUI
             if (obj == null)
                 return false;
 
-            return this.Equals((AllDirectionStyleValue<T>)obj);
+            return Equals((AllDirectionStyleValue<T>)obj);
         }
 
         public override int GetHashCode()
         {
-            int hash = 17;
-
-            hash = hash * 23 + Left.GetHashCode();
-            hash = hash * 23 + Right.GetHashCode();
-            hash = hash * 23 + Top.GetHashCode();
-            hash = hash * 23 + Bottom.GetHashCode();
-
-            return hash;
+            return HashCode.Combine(Left, Right, Top, Bottom);
         }
 
         public static bool operator ==(AllDirectionStyleValue<T> lhs, AllDirectionStyleValue<T> rhs)

@@ -123,5 +123,13 @@ namespace SilkUI
         {
             return RunDrawCall(control, reference, () => _renderer.DrawText(x, y, text, font, color));
         }
+
+        public int DrawText(Control control, int? reference, Rectangle bounds, string text, Font font, Color color,
+            HorizontalAlignment horizontalAlignment, VertictalAlignment vertictalAlignment, bool wordWrap = false,
+            TextOverflow textOverflow = TextOverflow.Clip)
+        {
+            return RunDrawCall(control, reference, () => _renderer.DrawText(bounds, text, font, color,
+                horizontalAlignment, vertictalAlignment, wordWrap, textOverflow));
+        }
     }
 }

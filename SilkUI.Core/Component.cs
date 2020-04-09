@@ -127,6 +127,9 @@ namespace SilkUI
         {
             path = new SelectorPathNode() { Prev = path, Control = searchRoot };
 
+            if (selector.MatchControl(searchRoot, path))
+                yield return searchRoot;
+
             foreach (var control in Children)
             {
                 if (control is Component component)

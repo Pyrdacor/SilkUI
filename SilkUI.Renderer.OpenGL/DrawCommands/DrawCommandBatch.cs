@@ -205,6 +205,24 @@ namespace SilkUI.Renderer.OpenGL
                         textureCoordBuffer.Add(command.BufferIndex + i,
                             Util.LimitToShort(command.TexCoords[i].X), Util.LimitToShort(command.TexCoords[i].Y));
                     }
+
+                    var clipPositionXBuffer = vao.EnsureValueBuffer(ShaderBase.ClipRectXName, true);
+                    for (int i = 0; i < command.TexCoords.Length; ++i)
+                    {
+                        if (command.ClipRect == null)
+                        {
+                            clipPositionXBuffer.Add(command.BufferIndex + i, uint.MaxValue);
+                        }
+                        else
+                        {
+                            clipPositionXBuffer.Add(command.BufferIndex + i, (uint)command.ClipRect.Value.X);
+                            vao.EnsureValueBuffer(ShaderBase.ClipRectYName, true)
+                                .Add(command.BufferIndex + i, (uint)command.ClipRect.Value.Y);
+                            vao.EnsurePositionBuffer(ShaderBase.ClipRectSizeName, true)
+                                .Add(command.BufferIndex + i, Util.LimitToShort(command.ClipRect.Value.Width),
+                                    Util.LimitToShort(command.ClipRect.Value.Height));
+                        }
+                    }
                 }
 
                 if (command.Transparency)

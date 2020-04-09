@@ -99,7 +99,7 @@ namespace SilkUI
 
                     foreach (var face in fontData.Faces)
                     {
-                        var fontGlyphs = new FontGlyphs(face.Glyphs);
+                        var fontGlyphs = new FontGlyphs(face.LineHeight, face.Glyphs);
                         var options = FontStyle.None;
 
                         if (face.Bold)

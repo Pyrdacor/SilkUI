@@ -26,9 +26,11 @@ namespace SilkUI.Renderer.OpenGL
         public ShaderBase Shader { get; }
         public Texture Texture { get; protected set; }
         public Point[] TexCoords { get; protected set; }
+        public Rectangle? ClipRect { get; protected set; }
 
         public DrawCommand(Point[] vertexPositions, uint z, Color color, bool transparency,
-            uint roundness, uint blurRadius, ShaderBase shader, Texture texture, Point[] texCoords)
+            uint roundness, uint blurRadius, ShaderBase shader, Texture texture, Point[] texCoords,
+            Rectangle? clipRect = null)
         {
             if (vertexPositions == null)
                 throw new ArgumentNullException("Vertex positions must not be null.");
@@ -66,6 +68,7 @@ namespace SilkUI.Renderer.OpenGL
             Shader = shader;
             Texture = texture;
             TexCoords = texCoords;
+            ClipRect = clipRect;
         }
 
         /// <summary>
@@ -103,6 +106,12 @@ namespace SilkUI.Renderer.OpenGL
 
             VertexArrayObject = null;
             BufferIndex = -1;
+        }
+
+        public void Offset(int x, int y)
+        {
+            for (int i = 0; i < VertexPositions.Length; ++i)
+                VertexPositions[i].Offset(x, y);
         }
     }
 }

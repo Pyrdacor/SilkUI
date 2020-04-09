@@ -31,11 +31,7 @@ namespace SilkUI
 
         protected override int CalculateHashCode()
         {
-            int hash = 17;
-
-            hash = hash * 23 + _selector.GetHashCode();
-
-            return hash;
+            return HashCode.Combine(_selector);
         }
     }
 }

@@ -39,7 +39,8 @@ namespace SilkUI
 
                 if (checkType.IsPrimitive || checkType.IsEnum ||
                     Util.CheckGenericType(checkType, typeof(AllDirectionStyleValue<>)) ||
-                    checkType == typeof(ColorValue)
+                    checkType == typeof(ColorValue) ||
+                    checkType == typeof(Dimension)
                 )
                 {
                     var defaultValueAttribute = field.GetCustomAttribute(typeof(DefaultValueAttribute));
@@ -100,7 +101,7 @@ namespace SilkUI
             }
             else if (fieldType == typeof(ColorValue))
             {
-                ColorValue? colorValue = null;
+                ColorValue? colorValue;
                 var valueType = value.GetType();
 
                 if (valueType == typeof(string))
@@ -115,6 +116,24 @@ namespace SilkUI
                     colorValue = (ColorValue?)value;
 
                 return new ColorProperty(name, colorValue);
+            }
+            else if (fieldType == typeof(Dimension))
+            {
+                Dimension? dimension;
+                var valueType = value.GetType();
+
+                if (valueType == typeof(string))
+                    dimension = (string)value;
+                else if (valueType == typeof(int))
+                    dimension = (int)value;
+                else if (valueType == typeof(uint))
+                    dimension = (uint)value;
+                else if (valueType == typeof(Dimension.Type))
+                    dimension = (Dimension.Type)value;
+                else
+                    dimension = (Dimension?)value;
+
+                return new DimensionProperty(name, dimension);
             }
             else if (Util.CheckGenericType(fieldType, typeof(AllDirectionStyleValue<>)))
             {

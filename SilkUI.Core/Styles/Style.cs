@@ -4,6 +4,24 @@ namespace SilkUI
 {
     public struct Style
     {
+        #region Display
+
+        [DefaultValue(true)]
+        public bool? Visible;
+        [DefaultValue(true)]
+        public bool? Enabled;
+        [DefaultValue(0)]
+        public Dimension? Width;
+        [DefaultValue(0)]
+        public Dimension? Height;
+        [DefaultValue(0)]
+        public AllDirectionStyleValue<int>? Margin;
+        [DefaultValue(0)]
+        public AllDirectionStyleValue<int>? Padding;
+
+        #endregion
+
+
         #region Background
 
         public BackgroundStyle? Background;
@@ -16,10 +34,11 @@ namespace SilkUI
         #region Border
 
         public BorderStyle? Border;
-        public BorderSideStyle? BorderTop;
+        // TODO: I think the following properties could not be associated to the others.
+        /*public BorderSideStyle? BorderTop;
         public BorderSideStyle? BorderRight;
         public BorderSideStyle? BorderBottom;
-        public BorderSideStyle? BorderLeft;
+        public BorderSideStyle? BorderLeft;*/
         [DefaultValue(0)]
         public AllDirectionStyleValue<int>? BorderSize;
         [DefaultValue(SilkUI.BorderLineStyle.None)]

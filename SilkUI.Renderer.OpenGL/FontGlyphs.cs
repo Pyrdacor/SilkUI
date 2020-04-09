@@ -19,9 +19,11 @@ namespace SilkUI
     internal class FontGlyphs
     {
         public IReadOnlyDictionary<uint, FontGlyph> Glyphs { get; }
+        public int LineHeight { get; }
 
-        internal FontGlyphs(params FreeType.Glyph[] glyphs)
+        internal FontGlyphs(int lineHeight, params FreeType.Glyph[] glyphs)
         {
+            LineHeight = lineHeight;
             var fontAtlas = TextureAtlas.Create(glyphs);
             Glyphs = glyphs.ToDictionary
             (

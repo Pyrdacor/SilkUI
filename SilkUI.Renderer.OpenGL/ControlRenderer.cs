@@ -18,6 +18,7 @@ namespace SilkUI.Renderer.OpenGL
         private uint _displayLayer = 0;
         private readonly DrawCommandBatch _drawCommandBatch = new DrawCommandBatch();
         private int _replaceRenderObjectIndex = -1;
+        private const int TabSize = 4;
 
         public ControlRenderer(RenderDimensionReference renderDimensionReference)
         {
@@ -202,9 +203,10 @@ namespace SilkUI.Renderer.OpenGL
             Texture texture = null;
             Point textureOffset = Point.Empty;
             bool transparency = false;
+            Rectangle? clipRect = null;
 
             return AddDrawCommands(new DrawCommandSprite(x, y, image.Width, image.Height, _displayLayer++,
-                colorOverlay ?? Color.White, texture, textureOffset, transparency));
+                colorOverlay ?? Color.White, texture, textureOffset, transparency, clipRect));
         }
 
         public int FillTriangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color)
@@ -274,9 +276,21 @@ namespace SilkUI.Renderer.OpenGL
             var drawCommands = new List<DrawCommand>(text.Length);
             y += font.Size; // We need origin Y (baseline)
 
-            foreach (char ch in text)
+            for (int i = 0; i < text.Length; ++i)
             {
-                var glyph = DrawGlyph(ref x, y, ch, color, glyphs);
+                if (text[i] == '\n')
+                {
+                    y += glyphs.LineHeight;
+                    continue;
+                }
+                else if (text[i] == '\r')
+                {
+                    if (i == text.Length - 1 || text[i + 1] != '\n')
+                        y += glyphs.LineHeight;
+                    continue;
+                }
+
+                var glyph = DrawGlyph(ref x, y, text[i], color, glyphs, null);
 
                 if (glyph != null)
                     drawCommands.Add(glyph);
@@ -290,7 +304,236 @@ namespace SilkUI.Renderer.OpenGL
             return AddDrawCommands(drawCommands.ToArray());
         }
 
-        private DrawCommand DrawGlyph(ref int x, int y, char character, Color color, FontGlyphs glyphs)
+        private struct TextLine
+        {
+            public int StartCommandIndex;
+            public int CommandCount;
+            public int Width;
+            public int CurrentCommandIndex => StartCommandIndex + CommandCount;
+        }
+
+        // TODO: LTR/RTL support
+        public int DrawText(Rectangle bounds, string text, Font font, Color color,
+            HorizontalAlignment horizontalAlignment, VertictalAlignment vertictalAlignment,
+            bool wordWrap, TextOverflow textOverflow)
+        {
+            if (color.A == 0 || font.Size == 0 || string.IsNullOrWhiteSpace(text))
+                return DenyDrawing();
+
+            FontGlyphs glyphs;
+
+            try
+            {
+                glyphs = FontManager.Instance.GetFont(font);
+            }
+            catch (Exception ex)
+            {
+                var exception = new KeyNotFoundException("The given font is not available.", ex);
+                exception.Data.Add("Font", font);
+                throw exception;
+            }
+
+            var drawCommands = new List<DrawCommand>(text.Length);
+            var lines = new Queue<TextLine>();
+            var currentTextLine = new TextLine()
+            {
+                StartCommandIndex = 0,
+                CommandCount = 0,
+                Width = 0
+            };
+            int x = bounds.X;
+            int y = bounds.Y + font.Size;
+            int lastWhiteSpacePosition = -1;
+            int widthToLastWhiteSpace = 0;
+            int lastWhiteSpaceWidth = 0;
+            Rectangle? clipRect = textOverflow == TextOverflow.Allow ? (Rectangle?)null : bounds;
+
+            void StartNextLine(TextLine? line = null)
+            {
+                AdjustLineX();
+                x = bounds.X;
+                y += glyphs.LineHeight;
+                lastWhiteSpacePosition = -1;
+                lines.Enqueue(currentTextLine);
+                currentTextLine = line ?? new TextLine()
+                {
+                    StartCommandIndex = currentTextLine.CurrentCommandIndex,
+                    CommandCount = 0,
+                    Width = 0
+                };
+            }
+
+            void SplitLine()
+            {
+                var nextLine = new TextLine()
+                {
+                    // Note: The whitespace is not added as a draw command so the
+                    // lastWhiteSpacePosition points to the draw command after
+                    // the whitespace character.
+                    StartCommandIndex = lastWhiteSpacePosition,
+                    CommandCount = currentTextLine.CommandCount - lastWhiteSpacePosition,
+                    Width = currentTextLine.Width - widthToLastWhiteSpace - lastWhiteSpaceWidth
+                };
+                currentTextLine.Width = widthToLastWhiteSpace;
+                currentTextLine.CommandCount = lastWhiteSpacePosition - currentTextLine.StartCommandIndex;
+                StartNextLine(nextLine);
+                x += nextLine.Width;
+
+                // Reposition the glyphs in the line that has moved down.
+                for (int i = 0; i < currentTextLine.CommandCount; ++i)
+                    drawCommands[currentTextLine.StartCommandIndex + i].Offset(-widthToLastWhiteSpace - lastWhiteSpaceWidth, glyphs.LineHeight);
+            }
+
+            void AdjustLineX()
+            {
+                var lineDrawCommands = drawCommands.Skip(currentTextLine.StartCommandIndex).Take(currentTextLine.CommandCount);
+
+                switch (horizontalAlignment)
+                {
+                    case HorizontalAlignment.Left:
+                    default:
+                        break;
+                    case HorizontalAlignment.Center:
+                        {
+                            int offsetX = (bounds.Width - currentTextLine.Width) / 2;
+                            if (offsetX != 0)
+                            {
+                                foreach (var drawCommand in lineDrawCommands)
+                                    drawCommand.Offset(offsetX, 0);
+                            }
+                            break;
+                        }
+                    case HorizontalAlignment.Right:
+                        {
+                            int offsetX = bounds.Width - currentTextLine.Width;
+                            if (offsetX != 0)
+                            {
+                                foreach (var drawCommand in lineDrawCommands)
+                                    drawCommand.Offset(offsetX, 0);
+                            }
+                            break;
+                        }
+                    case HorizontalAlignment.Justify:
+                        if (currentTextLine.Width >= bounds.Width)
+                        {
+                            // If it doesn't fit into the bounds, we just center it.
+                            int offsetX = (bounds.Width - currentTextLine.Width) / 2;
+                            if (offsetX != 0)
+                            {
+                                foreach (var drawCommand in lineDrawCommands)
+                                    drawCommand.Offset(offsetX, 0);
+                            }
+                        }
+                        else
+                        {
+                            // TODO: we don't have the whitespace here anymore :(
+                            throw new NotImplementedException("Justify is not implemented yet.");
+                        }
+                        break;
+                }
+            }
+
+            for (int i = 0; i < text.Length; ++i)
+            {
+                if (text[i] == '\n')
+                {
+                    StartNextLine();
+                    continue;
+                }
+                else if (text[i] == '\r')
+                {
+                    if (i == text.Length - 1 || text[i + 1] != '\n')
+                        StartNextLine();
+                    continue;
+                }
+
+                int lastX = x;
+                var glyph = DrawGlyph(ref x, y, text[i], color, glyphs, clipRect);
+                int glyphWidth = x - lastX;
+                bool whiteSpace = text[i] <= 32 || char.IsWhiteSpace(text[i]);
+
+
+                if (whiteSpace)
+                {
+                    lastWhiteSpacePosition = currentTextLine.CurrentCommandIndex;
+                    widthToLastWhiteSpace = currentTextLine.Width;
+                    lastWhiteSpaceWidth = glyphWidth;
+                }                
+
+                int newLineWidth = currentTextLine.Width + glyphWidth;
+
+                if (wordWrap && lastWhiteSpacePosition != -1 && newLineWidth > bounds.Width)
+                {
+                    // If this is a white space character we simply ignore it and break.
+                    if (whiteSpace)
+                    {
+                        StartNextLine();
+                        continue;
+                    }
+                    else
+                    {
+                        // Bring the current glyph to the right position.
+                        glyph.Offset(-widthToLastWhiteSpace - lastWhiteSpaceWidth, glyphs.LineHeight);
+                        SplitLine();
+                        x += glyphWidth; // x has been reset in SplitLine!
+                    }
+                }
+
+                if (glyph != null)
+                {
+                    drawCommands.Add(glyph);
+                    ++currentTextLine.CommandCount;
+                }
+
+                currentTextLine.Width += glyphWidth;
+
+                if (i == text.Length - 1)
+                {
+                    AdjustLineX();
+
+                    lines.Enqueue(currentTextLine);
+
+                    // Adjust y of all lines
+                    int totalHeight = lines.Count * glyphs.LineHeight;
+
+                    switch (vertictalAlignment)
+                    {
+                        case VertictalAlignment.Top:
+                        default:
+                            break;
+                        case VertictalAlignment.Center:
+                            {
+                                int offsetY = (bounds.Height - totalHeight) / 2;
+                                if (offsetY != 0)
+                                {
+                                    foreach (var drawCommand in drawCommands)
+                                        drawCommand.Offset(0, offsetY);
+                                }
+                                break;
+                            }
+                        case VertictalAlignment.Bottom:
+                            {
+                                int offsetY = bounds.Height - totalHeight;
+                                if (offsetY != 0)
+                                {
+                                    foreach (var drawCommand in drawCommands)
+                                        drawCommand.Offset(0, offsetY);
+                                }
+                                break;
+                            }
+                    }
+                }
+            }
+
+            if (drawCommands.Count == 0)
+                return DenyDrawing(); // Nothing was drawn.
+
+            ++_displayLayer;
+
+            return AddDrawCommands(drawCommands.ToArray());
+        }
+
+        private DrawCommand DrawGlyph(ref int x, int y, char character, Color color, FontGlyphs glyphs, Rectangle? clipRect)
         {
             var bytes = Encoding.Unicode.GetBytes(new char[] { character });
             uint code = bytes.Length switch
@@ -303,22 +546,23 @@ namespace SilkUI.Renderer.OpenGL
             };
 
             if (!glyphs.Glyphs.ContainsKey(code))
-                return null;
-
-            var glyph = glyphs.Glyphs[code];
-
-            if (code <= 32) // Don't draw control characters and spaces, but advance.
             {
                 if (code == '\t' && glyphs.Glyphs.ContainsKey(' ')) // TODO: make tab size configurable or a constant
-                    x += 4 * glyphs.Glyphs[' '].Advance;
-                else
-                    x += glyph.Advance;
+                    x += TabSize * glyphs.Glyphs[' '].Advance;
 
                 return null;
             }
-            
+
+            var glyph = glyphs.Glyphs[code];
+
+            if (code <= 32 || char.IsWhiteSpace(character)) // Don't draw control characters and spaces, but advance.
+            {
+                x += glyph.Advance;
+                return null;
+            }
+
             var glyphCommand = new DrawCommandSprite(x + glyph.BearingX, y - glyph.BearingY, glyph.Width, glyph.Height,
-                _displayLayer, color, glyph.TextureAtlas.AtlasTexture, glyph.TextureAtlasOffset, true);
+                _displayLayer, color, glyph.TextureAtlas.AtlasTexture, glyph.TextureAtlasOffset, true, clipRect);
 
             x += glyph.Advance;
 

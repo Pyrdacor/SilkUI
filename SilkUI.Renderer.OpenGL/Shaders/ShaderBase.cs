@@ -20,6 +20,9 @@ namespace SilkUI.Renderer.OpenGL.Shaders
         internal static readonly string TexCoordName = "texCoord";
         internal static readonly string ColorKeyName = "colorKey";
         internal static readonly string AtlasSizeName = "atlasSize";
+        internal static readonly string ClipRectXName = "clipRectPositionX"; // This also serves as an activation switch for clipping!
+        internal static readonly string ClipRectYName = "clipRectPositionY";
+        internal static readonly string ClipRectSizeName = "clipRectSize";
 
         protected ShaderProgram _shaderProgram;
 

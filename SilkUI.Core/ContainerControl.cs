@@ -2,7 +2,7 @@ using System.Collections.Specialized;
 
 namespace SilkUI
 {
-    public abstract class ContainerControl : Control
+    public abstract class ContainerControl : Controls.Panel
     {
         public ControlList Children => base.InternalChildren;
         
